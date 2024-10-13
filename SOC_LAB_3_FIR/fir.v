@@ -10,7 +10,7 @@ module fir
 #(  
     parameter pADDR_WIDTH = 12,
     parameter pDATA_WIDTH = 32,
-    parameter Tape_Num    = 11
+    parameter Tape_Num    = 4'd11
 )
 (
     // Axi-lite write
@@ -168,9 +168,10 @@ module fir
     localparam TAPE_NUM_BIT = $clog2(Tape_Num);
     reg [TAPE_NUM_BIT-1 : 0] tap_wr_addr;
     wire [TAPE_NUM_BIT-1 : 0] tap_addr_sel;
+    wire [pDATA_WIDTH-1 : 0] tap_data;
 
     // for PE-transfer-----------------------------------
-    reg [TAPE_NUM_BIT-1 : 0] pe_req_addr;     // ??? wait axis flow finished
+    wire [TAPE_NUM_BIT-1 : 0] pe_req_addr;     // ??? wait axis flow finished
     // --------------------------------------------------
 
     assign tap_addr_sel[TAPE_NUM_BIT-1 : 2] = (pop_tap) ? tap_wr_addr : pe_req_addr;// --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
@@ -191,7 +192,7 @@ module fir
         .WE         (4'b1111),
         .EN         (pop_tap),
         .Di         (w_fifo_out),
-        .Do         (),
+        .Do         (tap_data),
         .A          (tap_addr_sel)
     );
 
@@ -221,7 +222,7 @@ module fir
     // --------------------------------------------------
 
     assign ss_tready        = ss_tvalid  & !ss_fifo_full;
-    assign pop_ss_fifo     = pe_ready; //unit calculate end can pop next data.
+    assign pop_ss_fifo      = pe_ready & !ss_fifo_empty; //unit calculate end can pop next data.
 
     fifo
     #(  .WIDTH      (pDATA_WIDTH),
@@ -233,7 +234,7 @@ module fir
         fifo_full   (ss_fifo_full),
         fifo_empty  (ss_fifo_empty),
         w_valid     (ss_tvalid),
-        r_ready     (pop_ss_fifo),
+        r_ready     (pe_ready),
         data_in     (ss_tdata),
         data_out    (x_data)
     );
@@ -242,9 +243,82 @@ module fir
 //*******************************************************************************************
 // - PE-Transfer  systolic array convolution
 //*******************************************************************************************
+    localparam [1:0] IDLE = 2'b00;      // IDLE     : (when pop x and tap) ----> Cal
+    localparam [1:0] CAL = 2'b01;       // CAL      : (when pop x and tap) ----> Cal
+    localparam [1:0] POP = 2'b11;       // POP      : (when pop x and tap) ----> Cal
+    localparam [1:0] FINISH = 2'b10;    // FINISH   : (when pop x and tap) ----> Cal
+
     reg [pDATA_WIDTH-1 : 0] x_input,tap_input;
     reg [pDATA_WIDTH-1 : 0] PE_output [0 : Tape_Num-1];
-    localparam [1:0] IDLE = 2'b00; // pop > calculate; calculate one cycle to datatransfer; pop 
+    reg [TAPE_NUM_BIT-1 : 0] tap_count;
+    reg [TAPE_NUM_BIT-1 : 0] input_count;
+    reg [1:0] state;
+    integer i;
+
+    // tap
+    assign pe_req_addr = tap_count;
+
+    // x
+    assign pe_ready = (state == IDLE) | (state == POP);
+
+
+
+
+    always@(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+        begin
+            state <= IDLE;
+            x_input     <= 0;
+            tap_input   <= 0;
+            tap_count   <= Tape_Num;
+            input_count <= 0;
+            for(i = 0 ; i < Tape_Num ; i = i+1)
+                PE_output[i]  <= 0;
+        end
+        else 
+            case(state)
+            IDLE : 
+            begin
+                if(pop_ss_fifo)
+                begin
+                    state       <= CAL;
+                    x_input     <= x_data;
+                    tap_input   <= tap_data;
+                    input_count <= input_count + 1; // that maybe can do better to reduce gate count. --JIANG
+                end
+            end
+            CAL : 
+            begin
+                if(tap_count == 0)
+                begin
+                    state       <= POP;
+                    tap_count   <= Tape_Num - input_count;
+                end
+                if((tap_count == 0) & (input_count == Tape_Num - 1))
+                    state       <= FINISH;
+
+                PE_output[tap_count]    <= x_input * tap_input + PE_output[tap_count];
+                tap_input               <= tap_data;
+                tap_count               <= tap_count-1;
+            end
+            POP : 
+            begin
+                if(pop_ss_fifo)
+                begin
+                    state       <= CAL;
+                    x_input     <= x_data;
+                    tap_input   <= tap_data;
+                    input_count <= input_count + 1; // that maybe can do better to reduce gate count. --JIANG
+                end
+            end
+            FINISH : 
+            begin
+                state <= IDLE;
+            end
+            endcase
+    end
+    
 //*******************************************************************************************
 // - axi-stream read
 //*******************************************************************************************
