@@ -227,13 +227,11 @@ module tb_fifo;
         $stop;
         end
     
+    pop_wrtie_mem;
+    pop_wrtie_mem;
+    pop_wrtie_mem;
 
     //  3. basic auto check ----------------------------------------
-    pop_wrtie_mem;
-    pop_wrtie_mem;
-    pop_wrtie_mem;
-
-
     for(i = 0; i < 4 ; i= i+1)  
     begin
         for(j = 0; j < DEPTH; j = j+1)
