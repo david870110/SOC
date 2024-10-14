@@ -39,7 +39,7 @@ module fifo
 
     always @(posedge clk or negedge reset) 
     begin
-        if (reset)
+        if (!reset)
         begin
             wrp <= 'd0;
             rdp <= 'd0;
@@ -54,7 +54,7 @@ module fifo
     end 
     always @(posedge clk or negedge reset) 
     begin
-        if (reset)
+        if (!reset)
         begin
             drp <= 'd0;
         end
@@ -76,7 +76,7 @@ module fifo
     
     always @(posedge clk or negedge reset) 
     begin
-        if (reset)
+        if (!reset)
             for(i = 0;i<DEPTH;i=i+1)
                 fifo_reg[i] <= 'd0;
         else 
