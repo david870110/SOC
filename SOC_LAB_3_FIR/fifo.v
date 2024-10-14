@@ -34,7 +34,7 @@ module fifo
     
     assign fifo_pop = !fifo_empty & r_ready;
     assign fifo_push = !fifo_full & w_valid;
-    assign fifo_full  = &drp;
+    assign fifo_full  = (drp == (DEPTH-1) );
     assign fifo_empty = (drp == 0); 
 
     always @(posedge clk or negedge reset) 
