@@ -94,7 +94,10 @@ module tb_fifo;
     end
     generate_data(i);
     if(!fifo_full) 
+        begin
         $display("    ERROR : fifo_full is not working.");
+        $stop;
+        end
 
 
 
