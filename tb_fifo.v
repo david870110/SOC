@@ -49,7 +49,6 @@ module tb_fifo;
             else
             begin
                 $display("FIFO FULL : data %h is not input fifo." , data);
-                $stop;
             end
         end
     endtask
@@ -81,16 +80,22 @@ module tb_fifo;
     rst_n   = 0;
     repeat(1) @(posedge clk)
     rst_n   = 1;
-    // ---------------------------------------
+    //  1. fifo empty testing ---------------------------------------
     if(!fifo_empty)
     begin
         $display ("ERROR : fifo_empty is not working.");
         $stop;
     end
-    for(i = 0; i<10 ; i = i+1)
+    //  1. fifo full testing ---------------------------------------
+    for(i = 0; i < DEPTH ; i = i+1)
     begin
         generate_data(i);
+        if(fifo_full) $display("    ERROR : fifo_full is not match to depth.");
     end
+    generate_data(i);
+    if(!fifo_full) 
+        $display("    ERROR : fifo_full is not working.");
+
 
 
 
@@ -105,5 +110,7 @@ endmodule
 /*
 ("    ERROR : fifo_empty is not working.");
 ("  CORRECT : Not have any error.");
-("FIFO FULL : data %h is not input fifo." , data)
+("FIFO FULL : data %h is not input fifo." , data);
+("    ERROR : fifo_full is not match to depth.");
+("    ERROR : fifo_full is not working.");
 */
