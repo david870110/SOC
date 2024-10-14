@@ -30,7 +30,7 @@ module tb_fifo;
     // Create TB FIFO for check : 
     // *******************************************************************************************   
     localparam PTR_NUM_BITS = $clog2(DEPTH);
-    
+
     reg [DATA_WIDTH-1:0] fifo_mem [0:DEPTH-1];
     reg [PTR_NUM_BITS:0] wrp, rdp;
     reg [PTR_NUM_BITS:0] drp;  
@@ -46,10 +46,13 @@ module tb_fifo;
     task push_tb_fifo;
         input[DATA_WIDTH-1 : 0] data;
         begin
-            if(drp < DEPTH)
+            if(drp <= DEPTH)
             begin
                 fifo_mem[wrp] <= data;
-                wrp = wrp + 1;
+                if(wrp < DEPTH-1)
+                    wrp = wrp + 1;
+                else
+                    wrp = 0;
                 drp = drp + 1;
             end
         end
@@ -60,8 +63,11 @@ module tb_fifo;
         begin
             if(drp > 0)
             begin
-                data <= fifo_mem[rdp];
-                rdp = rdp + 1;
+                data = fifo_mem[rdp];
+                if(rdp < DEPTH-1)
+                    rdp = rdp + 1;
+                else
+                    rdp = 0;
                 drp = drp - 1;
             end
         end
@@ -94,14 +100,15 @@ module tb_fifo;
     endtask
 
     // *******************************************************************************************
-    // task write_mem : 
+    // task pop_wrtie_mem : 
     //  - create a exp memory and design memory for check.
     //  - pop data and notify to fifo empty.
     //  - it will reset ready at next clock if push to fifo.
     //  - it will also to pop in TB FIFO.
+    //  - !! mem_addr only plus one at pop fifo.
     // *******************************************************************************************   
-    reg [DATA_WIDTH-1:0] exp_mem    [0:1023];
-    reg [DATA_WIDTH-1:0] design_mem [0:1023];
+    reg [DATA_WIDTH-1:0] exp_mem    [0:19];
+    reg [DATA_WIDTH-1:0] design_mem [0:19];
     reg [9:0] mem_addr;
     task reset_mem;
         begin
@@ -109,7 +116,7 @@ module tb_fifo;
         end
     endtask
     
-    task write_mem;
+    task pop_wrtie_mem;
         begin
             if(!fifo_empty) 
             begin
@@ -119,6 +126,7 @@ module tb_fifo;
                 @(posedge clk);
                 r_ready                 <= 0;
                 mem_addr                <= mem_addr + 1;
+                @(posedge clk);
             end
             else
             begin
@@ -163,7 +171,7 @@ module tb_fifo;
                 for(j = 0 ; j < ({$random} % (2 * DEPTH)) ; j = j+1) 
                     generate_data({$random} % 32'hFFFFFFFF);
                 for(j = 0 ; j < ({$random} % (2 * DEPTH)) ; j = j+1) 
-                    write_mem;
+                    pop_wrtie_mem;
             end
         end
     endtask
@@ -200,7 +208,6 @@ module tb_fifo;
         $display ("ERROR : fifo_empty is not working.");
         $stop;
     end
-
     //  2. fifo full testing ---------------------------------------
     for(i = 0; i < DEPTH ; i = i+1)
     begin
@@ -217,21 +224,26 @@ module tb_fifo;
         $display("    ERROR : fifo_full is not working.");
         $stop;
         end
+    
 
     //  3. basic auto check ----------------------------------------
-    write_mem;
-    write_mem;
-    write_mem;
+    pop_wrtie_mem;
+    pop_wrtie_mem;
+    pop_wrtie_mem;
+
+/*
     for(i = 0; i < 4 ; i= i+1)  
     begin
         for(j = 0; j < DEPTH; j = j+1)
-            write_mem;
-        for(j = 0; j < DEPTH; j = j+1)
             generate_data(j+i*DEPTH);
+        for(j = 0; j < DEPTH; j = j+1)
+            pop_wrtie_mem;
     end
-
+*/
     auto_check;
-
+    generate_data('h4);
+    pop_wrtie_mem;
+    auto_check;
     //  4. random task ---------------------------------------------
     /*
     random_data_generate(50);

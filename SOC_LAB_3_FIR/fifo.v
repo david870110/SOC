@@ -29,12 +29,12 @@ module fifo
     //*******************************************************************************************
     // - FIFO Status & ptr control
     //*******************************************************************************************    
-    reg [PTR_NUM_BITS - 1 : 0] drp, wrp, rdp;
+    reg [PTR_NUM_BITS-1 : 0] drp, wrp, rdp;
     wire fifo_pop,fifo_push;
     
     assign fifo_pop = !fifo_empty & r_ready;
     assign fifo_push = !fifo_full & w_valid;
-    assign fifo_full  = (drp == (DEPTH-1) );
+    assign fifo_full  = (drp == DEPTH );
     assign fifo_empty = (drp == 0); 
 
     always @(posedge clk or negedge reset) 
@@ -47,9 +47,19 @@ module fifo
         else 
         begin
             if(fifo_push)
-                wrp <= wrp + 1'b1;
+            begin
+                if(wrp < DEPTH-1)
+                    wrp <= wrp + 1'b1;
+                else
+                    wrp <= 0;
+            end
             if(fifo_pop)
-                rdp <= rdp + 1'b1;
+            begin
+                if(rdp < DEPTH-1)
+                    rdp <= rdp + 1;
+                else
+                    rdp <= 0;
+            end
         end
     end 
     always @(posedge clk or negedge reset) 
