@@ -101,7 +101,7 @@ module tb_fifo;
     reg [DATA_WIDTH-1:0] exp_mem    [0:1023];
     reg [DATA_WIDTH-1:0] design_mem [0:1023];
     reg [9:0] mem_addr;
-    task reset mem;
+    task reset_mem;
         begin
             mem_addr = 0;
         end
