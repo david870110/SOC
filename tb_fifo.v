@@ -89,8 +89,8 @@ module tb_fifo;
     //  1. fifo full testing ---------------------------------------
     for(i = 0; i < DEPTH ; i = i+1)
     begin
-        generate_data(i);
         if(fifo_full) $display("    ERROR : fifo_full is not match to depth.");
+        generate_data(i);
     end
     generate_data(i);
     if(!fifo_full) 
@@ -104,7 +104,7 @@ module tb_fifo;
 
 
     // ---------------------------------------
-    repeat(5) @(posedge clk)
+    repeat(5) @(posedge clk);
     $display ("CORRECT : Not have any error.");
     $finish;
     end
