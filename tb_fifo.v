@@ -47,7 +47,10 @@ module tb_fifo;
                 w_valid <= 0;
             end
             else
+            begin
                 $display("FIFO FULL : data %h is not input fifo." , data);
+                $stop;
+            end
         end
     endtask
 
@@ -71,11 +74,11 @@ module tb_fifo;
     // - reset
     clk     = 0;
     rst_n   = 1;
-    // ---------------------------------------
     repeat(1) @(posedge clk)
     rst_n   = 0;
     repeat(1) @(posedge clk)
     rst_n   = 1;
+    // ---------------------------------------
     if(!fifo_empty)
     begin
         $display ("ERROR : fifo_empty is not working.");
