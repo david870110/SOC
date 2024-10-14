@@ -112,14 +112,14 @@ module tb_fifo;
             begin
                 r_ready <= 1;
                 pop_fifo(exp_mem[mem_addr]);
-                design_mem = data_out;
+                design_mem = data_out;       // ---!!! maybe have clock problem.
                 @(posedge clk);
                 r_ready <= 0;
                 mem_addr <= mem_addr + 1;
             end
             else
             begin
-                $display("FIFO FULL : data %h is not input fifo." , data);
+                $display("FIFO Empty: no data in fifo.");
             end
         end
     endtask
@@ -143,9 +143,12 @@ module tb_fifo;
             else
                 total_loop_num = total_loop;
             for(i = 0 ; i < total_loop_num ; i = i+1)
+            begin
                 for(j = 0 ; j < ({$random} % (2 * DEPTH)) ; j = i+1) 
-                    generate_data({$random} % 32'hFFFFFFFF)
-
+                    generate_data({$random} % 32'hFFFFFFFF);
+                for(j = 0 ; j < ({$random} % (2 * DEPTH)) ; j = i+1) 
+                    pop_mem;
+            end
         end
     endtask
     // *******************************************************************************************
@@ -219,4 +222,5 @@ endmodule
 ("FIFO FULL : data %h is not input fifo." , data);
 ("    ERROR : fifo_full is not match to depth.");
 ("    ERROR : fifo_full is not working.");
+("FIFO Empty: no data in fifo.")
 */
