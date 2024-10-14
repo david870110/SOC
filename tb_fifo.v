@@ -27,14 +27,51 @@ module tb_fifo;
     always #50 clk = ~clk;
 
     // *******************************************************************************************
-    // 
-    // 
-    // 
-    // 
-    // 
-    // 
-    // 
-    // 
+    // Create TB FIFO for check : 
+    // *******************************************************************************************   
+    reg [DATA_WIDTH-1:0] fifo_mem [0:DEPTH-1];
+    reg [DEPTH:0] wrp, rdp;
+    reg [DEPTH:0] drp;  
+
+    task reset_fifo;
+        begin
+            drp = 0;
+            rdp = 0;
+            wrp = 0;
+        end
+    endtask
+
+    task push_fifo;
+        input[DATA_WIDTH-1 : 0] data;
+        begin
+            if(drp < DEPTH)
+            begin
+                fifo_mem[wrp] = data;
+                wrp = wrp + 1;
+                drp = drp + 1;
+            end
+        end
+    endtask
+
+    task pop_fifo;
+        output [DATA_WIDTH-1 : 0] data;
+        begin
+            if(drp > 0)
+            begin
+                data = fifo_mem[wrp];
+                rdp = rdp + 1;
+                drp = drp - 1;
+            end
+        end
+    endtask
+
+
+
+    // *******************************************************************************************
+    // task generate_data : 
+    //  - input data and notify to fifo full
+    //  - it will reset valid at next clock if push to fifo.
+    //  - it will also to push in TB FIFO.
     // *******************************************************************************************   
     task generate_data;
         input[DATA_WIDTH-1 : 0] data;
@@ -43,6 +80,7 @@ module tb_fifo;
             begin
                 w_valid <= 1;
                 data_in <= data;
+                push_fifo(data);
                 @(posedge clk);
                 w_valid <= 0;
             end
@@ -54,6 +92,63 @@ module tb_fifo;
     endtask
 
     // *******************************************************************************************
+    // task pop_mem : 
+    //  - create a exp memory and design memory for check.
+    //  - pop data and notify to fifo empty.
+    //  - it will reset ready at next clock if push to fifo.
+    //  - it will also to pop in TB FIFO.
+    // *******************************************************************************************   
+    reg [DATA_WIDTH-1:0] exp_mem    [0:1023];
+    reg [DATA_WIDTH-1:0] design_mem [0:1023];
+    reg [9:0] mem_addr;
+    task reset mem;
+        begin
+            mem_addr = 0;
+        end
+    endtask
+    task pop_mem;
+        begin
+            if(!fifo_empty) 
+            begin
+                r_ready <= 1;
+                pop_fifo(exp_mem[mem_addr]);
+                design_mem = data_out;
+                @(posedge clk);
+                r_ready <= 0;
+                mem_addr <= mem_addr + 1;
+            end
+            else
+            begin
+                $display("FIFO FULL : data %h is not input fifo." , data);
+            end
+        end
+    endtask
+
+    // *******************************************************************************************
+    // task auto_check : 
+    //  - double layer random for loop
+    //      - random for : total generate and pop to mem data.
+    //          - ramdom for generate   : total generate data.
+    //          - ramdom for pop to mem : total pop data. 
+    // *******************************************************************************************   
+    integer i,j;
+
+    task auto_check;
+        input random_loop_mode;
+        input total_loop;
+        integer total_loop_num;
+        begin
+            if(random_loop_mode) 
+                total_loop_num = ({$random} % 80);
+            else
+                total_loop_num = total_loop;
+            for(i = 0 ; i < total_loop_num ; i = i+1)
+                for(j = 0 ; j < ({$random} % (2 * DEPTH)) ; j = i+1) 
+                    generate_data({$random} % 32'hFFFFFFFF)
+
+        end
+    endtask
+    // *******************************************************************************************
     // - TB Need test case
     //  - 1. check fifo empty (no w_valid) (OK)
     //  - 2. check fifo full (control r_ready) 
@@ -63,33 +158,38 @@ module tb_fifo;
     //      - design fifo and TB fifo have the same depth fifo layer.
     //  - 4. random test
     // *******************************************************************************************  
-    integer i ; 
-
     initial 
     begin
     $dumpfile ("./tb_fir.vcd");
     $dumpvars (0, tb_fifo);
-    // ---------------------------------------
-    // - reset
+    // reset --------------------------------------------------------
     clk     = 0;
     rst_n   = 1;
     data_in = 0;
     r_ready = 0;
     w_valid = 0;
+    reset_fifo;
+    reset_mem;
     repeat(1) @(posedge clk)
     rst_n   = 0;
     repeat(1) @(posedge clk)
     rst_n   = 1;
+
     //  1. fifo empty testing ---------------------------------------
     if(!fifo_empty)
     begin
         $display ("ERROR : fifo_empty is not working.");
         $stop;
     end
-    //  1. fifo full testing ---------------------------------------
+
+    //  2. fifo full testing ---------------------------------------
     for(i = 0; i < DEPTH ; i = i+1)
     begin
-        if(fifo_full) $display("    ERROR : fifo_full is not match to depth.");
+        if(fifo_full) 
+        begin
+            $display("    ERROR : fifo_full is not match to depth.");
+            $stop;
+        end
         generate_data(i);
     end
     generate_data(i);
@@ -99,11 +199,14 @@ module tb_fifo;
         $stop;
         end
 
+    //  3. basic auto check ----------------------------------------
 
 
 
+    //  4. random task ---------------------------------------------
 
-    // ---------------------------------------
+
+    // finish ------------------------------------------------------
     repeat(5) @(posedge clk);
     $display ("CORRECT : Not have any error.");
     $finish;
