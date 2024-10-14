@@ -74,6 +74,9 @@ module tb_fifo;
     // - reset
     clk     = 0;
     rst_n   = 1;
+    data_in = 0;
+    r_ready = 0;
+    w_valid = 0;
     repeat(1) @(posedge clk)
     rst_n   = 0;
     repeat(1) @(posedge clk)
