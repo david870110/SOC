@@ -29,11 +29,12 @@ module tb_fifo;
     // *******************************************************************************************
     // Create TB FIFO for check : 
     // *******************************************************************************************   
-    localparam PTR_NUM_BITS = $clog2(DEPTH);
+    localparam TB_DEPTH = 1024;
+    localparam TB_PTR_NUM_BITS = $clog2(TB_DEPTH);
 
-    reg [DATA_WIDTH-1:0] fifo_mem [0:DEPTH-1];
-    reg [PTR_NUM_BITS:0] wrp, rdp;
-    reg [PTR_NUM_BITS:0] drp;  
+    reg [DATA_WIDTH-1:0] fifo_mem [0:TB_DEPTH-1];
+    reg [TB_PTR_NUM_BITS:0] wrp, rdp;
+    reg [TB_PTR_NUM_BITS:0] drp;  
 
     task reset_tb_fifo;
         begin
@@ -46,10 +47,10 @@ module tb_fifo;
     task push_tb_fifo;
         input[DATA_WIDTH-1 : 0] data;
         begin
-            if(drp <= DEPTH)
+            if(drp <= 'd1023)
             begin
                 fifo_mem[wrp] <= data;
-                if(wrp < DEPTH-1)
+                if(wrp < TB_DEPTH-1)
                     wrp = wrp + 1;
                 else
                     wrp = 0;
@@ -64,7 +65,7 @@ module tb_fifo;
             if(drp > 0)
             begin
                 data = fifo_mem[rdp];
-                if(rdp < DEPTH-1)
+                if(rdp < TB_DEPTH-1)
                     rdp = rdp + 1;
                 else
                     rdp = 0;
@@ -91,6 +92,7 @@ module tb_fifo;
                 push_tb_fifo(data);
                 @(posedge clk);
                 w_valid <= 0;
+                @(posedge clk); //---------- continious data it will can't handle fifo full
             end
             else
             begin
@@ -107,8 +109,8 @@ module tb_fifo;
     //  - it will also to pop in TB FIFO.
     //  - !! mem_addr only plus one at pop fifo.
     // *******************************************************************************************   
-    reg [DATA_WIDTH-1:0] exp_mem    [0:19];
-    reg [DATA_WIDTH-1:0] design_mem [0:19];
+    reg [DATA_WIDTH-1:0] exp_mem    [0:1023];
+    reg [DATA_WIDTH-1:0] design_mem [0:1023];
     reg [9:0] mem_addr;
     task reset_mem;
         begin
@@ -231,7 +233,7 @@ module tb_fifo;
     pop_wrtie_mem;
     pop_wrtie_mem;
 
-/*
+
     for(i = 0; i < 4 ; i= i+1)  
     begin
         for(j = 0; j < DEPTH; j = j+1)
@@ -239,16 +241,13 @@ module tb_fifo;
         for(j = 0; j < DEPTH; j = j+1)
             pop_wrtie_mem;
     end
-*/
-    auto_check;
-    generate_data('h4);
-    pop_wrtie_mem;
+
     auto_check;
     //  4. random task ---------------------------------------------
-    /*
+    
     random_data_generate(50);
     auto_check;
-    */
+    
 
     // finish ------------------------------------------------------
     repeat(5) @(posedge clk);

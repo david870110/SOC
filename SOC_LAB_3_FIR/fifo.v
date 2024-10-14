@@ -34,6 +34,8 @@ module fifo
     
     assign fifo_pop = !fifo_empty & r_ready;
     assign fifo_push = !fifo_full & w_valid;
+    
+    // ---!!! fifo full and empty delay one cycle.
     assign fifo_full  = (drp == DEPTH );
     assign fifo_empty = (drp == 0); 
 
