@@ -243,7 +243,7 @@ module tb_fifo;
     auto_check;
     //  4. random task ---------------------------------------------
     
-    random_data_generate(50);
+    random_data_generate(600);
     auto_check;
     
 
@@ -261,6 +261,5 @@ endmodule
 ("    ERROR : fifo_full is not match to depth.");
 ("    ERROR : fifo_full is not working.");
 ("FIFO Empty: no data in fifo.")
-
 ("    ERROR : auto check compare result is failed, in memory address : %d." , i);
 */
