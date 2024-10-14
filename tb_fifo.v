@@ -110,12 +110,12 @@ module tb_fifo;
         begin
             if(!fifo_empty) 
             begin
-                r_ready <= 1;
+                r_ready                 <= 1;
+                design_memp[mem_addr]   <= data_out;       // ---!!! maybe have clock problem.
                 pop_fifo(exp_mem[mem_addr]);
-                design_mem <= data_out;       // ---!!! maybe have clock problem.
                 @(posedge clk);
-                r_ready <= 0;
-                mem_addr <= mem_addr + 1;
+                r_ready                 <= 0;
+                mem_addr                <= mem_addr + 1;
             end
             else
             begin
