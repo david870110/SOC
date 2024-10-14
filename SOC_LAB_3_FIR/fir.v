@@ -243,10 +243,10 @@ module fir
 //*******************************************************************************************
 // - PE-Transfer  systolic array convolution
 //*******************************************************************************************
-    localparam [1:0] IDLE = 2'b00;      // IDLE     : (when pop x and tap) ----> Cal
-    localparam [1:0] CAL = 2'b01;       // CAL      : (when pop x and tap) ----> Cal
-    localparam [1:0] POP = 2'b11;       // POP      : (when pop x and tap) ----> Cal
-    localparam [1:0] FINISH = 2'b10;    // FINISH   : (when pop x and tap) ----> Cal
+    localparam [1:0] IDLE = 2'b00;      // IDLE     : (when pop x and tap) ----> CAL
+    localparam [1:0] CAL = 2'b01;       // CAL      : (when tap_count == 0) ----> POP (when tap_count == 0 & input_count == Tape_Num) ----> FINISH
+    localparam [1:0] POP = 2'b11;       // POP      : (when pop x and tap) ----> CAL
+    localparam [1:0] FINISH = 2'b10;    // FINISH   : (when Setting Ending) ----> IDLE
 
     reg [pDATA_WIDTH-1 : 0] x_input,tap_input;
     reg [pDATA_WIDTH-1 : 0] PE_output [0 : Tape_Num-1];
@@ -293,7 +293,7 @@ module fir
                 if(tap_count == 0)
                 begin
                     state       <= POP;
-                    tap_count   <= Tape_Num - input_count;
+                    tap_count   <= Tape_Num - input_count; // delay 1 , so need in front of enter state.
                 end
                 if((tap_count == 0) & (input_count == Tape_Num - 1))
                     state       <= FINISH;
@@ -312,7 +312,7 @@ module fir
                     input_count <= input_count + 1; // that maybe can do better to reduce gate count. --JIANG
                 end
             end
-            FINISH : 
+            FINISH : //PE Finish
             begin
                 state <= IDLE;
             end
