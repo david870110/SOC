@@ -42,8 +42,12 @@ module tb_fifo;
             if(!fifo_full) 
             begin
                 w_valid <= 1;
-
+                data_in <= data;
+                @(posedge clk);
+                w_valid <= 0;
             end
+            else
+                $display("FIFO FULL : data %h is not input fifo." , data);
         end
     endtask
 
@@ -56,7 +60,9 @@ module tb_fifo;
     //      - when data is generated, push to TB fifo and push to design fifo. 
     //      - design fifo and TB fifo have the same depth fifo layer.
     //  - 4. random test
-    // *******************************************************************************************   
+    // *******************************************************************************************  
+    integer i ; 
+
     initial 
     begin
     $dumpfile ("./tb_fir.vcd");
@@ -71,13 +77,27 @@ module tb_fifo;
     repeat(1) @(posedge clk)
     rst_n   = 1;
     if(!fifo_empty)
-        begin
+    begin
         $display ("ERROR : fifo_empty is not working.");
         $stop;
-        end
+    end
+    for(i = 0; i<10 ; i = i+1)
+    begin
+        generate_data(i);
+    end
+
+
+
+
+    // ---------------------------------------
     repeat(5) @(posedge clk)
     $display ("CORRECT : Not have any error.");
     $finish;
     end
 
 endmodule
+/*
+("    ERROR : fifo_empty is not working.");
+("  CORRECT : Not have any error.");
+("FIFO FULL : data %h is not input fifo." , data)
+*/

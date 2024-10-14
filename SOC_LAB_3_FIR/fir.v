@@ -221,7 +221,7 @@ module fir
     wire pe_ready;
     // --------------------------------------------------
 
-    assign ss_tready        = ss_tvalid  & !ss_fifo_full;
+    assign ss_tready        = !ss_fifo_full;
     assign pop_ss_fifo      = pe_ready & !ss_fifo_empty; //unit calculate end can pop next data.
 
     fifo
