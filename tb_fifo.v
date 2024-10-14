@@ -29,11 +29,13 @@ module tb_fifo;
     // *******************************************************************************************
     // Create TB FIFO for check : 
     // *******************************************************************************************   
+    localparam PTR_NUM_BITS = $clog2(DEPTH);
+    
     reg [DATA_WIDTH-1:0] fifo_mem [0:DEPTH-1];
-    reg [DEPTH:0] wrp, rdp;
-    reg [DEPTH:0] drp;  
+    reg [PTR_NUM_BITS:0] wrp, rdp;
+    reg [PTR_NUM_BITS:0] drp;  
 
-    task reset_fifo;
+    task reset_tb_fifo;
         begin
             drp = 0;
             rdp = 0;
@@ -41,24 +43,24 @@ module tb_fifo;
         end
     endtask
 
-    task push_fifo;
+    task push_tb_fifo;
         input[DATA_WIDTH-1 : 0] data;
         begin
             if(drp < DEPTH)
             begin
-                fifo_mem[wrp] = data;
+                fifo_mem[wrp] <= data;
                 wrp = wrp + 1;
                 drp = drp + 1;
             end
         end
     endtask
 
-    task pop_fifo;
+    task pop_tb_fifo;
         output [DATA_WIDTH-1 : 0] data;
         begin
             if(drp > 0)
             begin
-                data = fifo_mem[wrp];
+                data <= fifo_mem[rdp];
                 rdp = rdp + 1;
                 drp = drp - 1;
             end
@@ -80,7 +82,7 @@ module tb_fifo;
             begin
                 w_valid <= 1;
                 data_in <= data;
-                push_fifo(data);
+                push_tb_fifo(data);
                 @(posedge clk);
                 w_valid <= 0;
             end
@@ -92,7 +94,7 @@ module tb_fifo;
     endtask
 
     // *******************************************************************************************
-    // task pop_mem : 
+    // task write_mem : 
     //  - create a exp memory and design memory for check.
     //  - pop data and notify to fifo empty.
     //  - it will reset ready at next clock if push to fifo.
@@ -106,13 +108,14 @@ module tb_fifo;
             mem_addr = 0;
         end
     endtask
-    task pop_mem;
+    
+    task write_mem;
         begin
             if(!fifo_empty) 
             begin
                 r_ready                 <= 1;
-                design_mem[mem_addr]   <= data_out;       // ---!!! maybe have clock problem.
-                pop_fifo(exp_mem[mem_addr]);
+                design_mem[mem_addr]    <= data_out;       // ---!!! maybe have clock problem.
+                pop_tb_fifo(exp_mem[mem_addr]);
                 @(posedge clk);
                 r_ready                 <= 0;
                 mem_addr                <= mem_addr + 1;
@@ -123,31 +126,44 @@ module tb_fifo;
             end
         end
     endtask
-
     // *******************************************************************************************
     // task auto_check : 
-    //  - double layer random for loop
-    //      - random for : total generate and pop to mem data.
+    //  - compare exp and design mem result
+    //  - use mem_addr pointer to know the mem data nums.
+    // *******************************************************************************************   
+    task auto_check;
+        begin
+            for(i = 0 ; i < mem_addr; i = i+1)
+            begin
+                if(design_mem[i] == exp_mem[i])
+                    $display("  Correct : in memory address : %d." , i);
+                else
+                begin
+                    $display("    ERROR : auto check compare result is failed, in memory address : %d." , i);
+                    $stop;
+                end
+            end
+        end
+    endtask
+
+    // *******************************************************************************************
+    // task random_data_generate : 
+    //  - double layer for loop
+    //      - total_loop for : total generate and pop to mem data cycle.
     //          - ramdom for generate   : total generate data.
     //          - ramdom for pop to mem : total pop data. 
     // *******************************************************************************************   
     integer i,j;
 
-    task auto_check;
-        input random_loop_mode;
-        input total_loop;
-        integer total_loop_num;
+    task random_data_generate;
+        input [9:0]total_loop;
         begin
-            if(random_loop_mode) 
-                total_loop_num = ({$random} % 80);
-            else
-                total_loop_num = total_loop;
-            for(i = 0 ; i < total_loop_num ; i = i+1)
+            for(i = 0 ; i < total_loop ; i = i+1)
             begin
-                for(j = 0 ; j < ({$random} % (2 * DEPTH)) ; j = i+1) 
+                for(j = 0 ; j < ({$random} % (2 * DEPTH)) ; j = j+1) 
                     generate_data({$random} % 32'hFFFFFFFF);
-                for(j = 0 ; j < ({$random} % (2 * DEPTH)) ; j = i+1) 
-                    pop_mem;
+                for(j = 0 ; j < ({$random} % (2 * DEPTH)) ; j = j+1) 
+                    write_mem;
             end
         end
     endtask
@@ -171,7 +187,7 @@ module tb_fifo;
     data_in = 0;
     r_ready = 0;
     w_valid = 0;
-    reset_fifo;
+    reset_tb_fifo;
     reset_mem;
     repeat(1) @(posedge clk)
     rst_n   = 0;
@@ -203,11 +219,24 @@ module tb_fifo;
         end
 
     //  3. basic auto check ----------------------------------------
-    auto_check(0,20);
+    write_mem;
+    write_mem;
+    write_mem;
+    for(i = 0; i < 4 ; i= i+1)  
+    begin
+        for(j = 0; j < DEPTH; j = j+1)
+            write_mem;
+        for(j = 0; j < DEPTH; j = j+1)
+            generate_data(j+i*DEPTH);
+    end
 
+    auto_check;
 
     //  4. random task ---------------------------------------------
-
+    /*
+    random_data_generate(50);
+    auto_check;
+    */
 
     // finish ------------------------------------------------------
     repeat(5) @(posedge clk);
@@ -223,4 +252,6 @@ endmodule
 ("    ERROR : fifo_full is not match to depth.");
 ("    ERROR : fifo_full is not working.");
 ("FIFO Empty: no data in fifo.")
+
+("    ERROR : auto check compare result is failed, in memory address : %d." , i);
 */
