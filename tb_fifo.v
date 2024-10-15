@@ -8,6 +8,7 @@ module tb_fifo;
     reg [DATA_WIDTH-1 : 0]  data_in;
     wire[DATA_WIDTH-1 : 0]  data_out;
     wire fifo_full, fifo_empty;
+    integer i,j;
  
     fifo
     #(  .WIDTH      (DATA_WIDTH),
@@ -163,7 +164,7 @@ module tb_fifo;
     //          - ramdom for generate   : total generate data.
     //          - ramdom for pop to mem : total pop data. 
     // *******************************************************************************************   
-    integer i,j;
+
 
     task random_data_generate;
         input [9:0]total_loop;
@@ -179,13 +180,13 @@ module tb_fifo;
     endtask
     // *******************************************************************************************
     // - TB Need test case
-    //  - 1. check fifo empty (no w_valid) (OK)
-    //  - 2. check fifo full (control r_ready) 
-    //  - 3. basic auto check compare data : 
+    //  - 1. check fifo empty (no w_valid)      (OK)
+    //  - 2. check fifo full (control r_ready)  (OK)
+    //  - 3. basic auto check compare data :    (OK)
     //      - TB has a fifo and sram (behavior)
     //      - when data is generated, push to TB fifo and push to design fifo. 
     //      - design fifo and TB fifo have the same depth fifo layer.
-    //  - 4. random test
+    //  - 4. random test                        (OK)
     // *******************************************************************************************  
     initial 
     begin
