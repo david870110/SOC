@@ -81,28 +81,28 @@ module fir
         .DEPTH      (AXI_FIFO_DEPTH)
     )   aw_fifo
     (
-        clk         (axis_clk),
-        reset       (axis_rst_n),
-        fifo_full   (aw_fifo_full),
-        fifo_empty  (aw_fifo_empty),
-        w_valid     (awvalid),
-        r_ready     (pop_axi_fifo),
-        data_in     (awaddr),
-        data_out    (aw_fifo_out)
+        .clk         (axis_clk),
+        .reset       (axis_rst_n),
+        .pre_full   (aw_fifo_full),
+        .pre_empty  (aw_fifo_empty),
+        .w_valid     (awvalid),
+        .r_ready     (pop_axi_fifo),
+        .data_in     (awaddr),
+        .data_out    (aw_fifo_out)
     );
     fifo
     #(  .WIDTH      (pDATA_WIDTH),
         .DEPTH      (AXI_FIFO_DEPTH)
     )   w_fifo
     (
-        clk         (axis_clk),
-        reset       (axis_rst_n),
-        fifo_full   (w_fifo_full),
-        fifo_empty  (w_fifo_empty),
-        w_valid     (wvalid),
-        r_ready     (pop_axi_fifo),
-        data_in     (wdata),
-        data_out    (w_fifo_out)
+        .clk         (axis_clk),
+        .reset       (axis_rst_n),
+        .pre_full   (w_fifo_full),
+        .pre_empty  (w_fifo_empty),
+        .w_valid     (wvalid),
+        .r_ready     (pop_axi_fifo),
+        .data_in     (wdata),
+        .data_out    (w_fifo_out)
     );
 
 
@@ -171,21 +171,14 @@ module fir
     wire [TAPE_NUM_BIT-1 : 0] tap_wr_addr, tap_cal_addr, tap_rd_addr;
     wire [TAPE_NUM_BIT-1 : 0] tap_addr_sel;
     wire [pDATA_WIDTH-1 : 0] tap_data;
-    wire [TAPE_NUM_BIT-1 : 0] tap_rd_addr;    
+    wire pe_req;
 
     assign tap_addr_sel[TAPE_NUM_BIT-1 : 2] = (pop_tap) ? tap_wr_addr :  // --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
                                               (pe_req)  ? tap_cal_addr : 
                                               tap_rd_addr ;
+
     assign tap_wr_addr = (aw_fifo_out[11:2]-'h5);
     assign tap_rd_addr = (araddr[11:2]-'h5);
-
-    always@(posedge axis_clk or negedge axis_rst_n)
-    begin
-        if(!axis_rst_n)
-            tap_wr_addr  <= 0;
-        else if((tap_wr_addr < Tape_Num) & pop_tap)
-            tap_wr_addr  <= tap_wr_addr + 1;
-    end
 
 
     bram #(11) tap_ram
@@ -209,9 +202,9 @@ module fir
  //rready in rvalid out . ready sample valid and set valid down
     assign rdata = (araddr == 12'h0)                        ? {29'b0,ap_start,ap_done,ap_idle}   : 
                    ((araddr >= 'h10) & (araddr <= 'h14))    ?   data_length : 
-                   (araddr >= 'h20) & (araddr <= 'hFF)      ?   tap_data : 32'hFFFFFFFF;
+                   ((araddr >= 'h20) & (araddr <= 'hFF))    ?   tap_data : 32'hFFFFFFFF;
 
-
+// master send arvalid and rready to slave , 
     
 
 //*******************************************************************************************

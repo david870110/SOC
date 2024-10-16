@@ -1,6 +1,7 @@
 module tb_fir;
-
-
+    localparam pADDR_WIDTH = 12;
+    localparam pDATA_WIDTH = 32;
+    localparam Tape_Num    = 4'd11;
     reg axis_clk;
     reg axis_rst_n;
 
@@ -98,20 +99,19 @@ module tb_fir;
         .axis_clk(axis_clk),
         .axis_rst_n(axis_rst_n)
     );
+    always #50 axis_clk = ~axis_clk;
+    initial
+        axis_clk = 0;
 //*******************************************************************************************
 // - Axi-lite Protocol Control
 //*******************************************************************************************
-
-    always #50 axis_clk = ~axis_clk;
-
-    always @(posedge axis_clk or negedge axis_rst_n)
+/*    always @(posedge axis_clk or negedge axis_rst_n)
     begin
         if(!axis_rst_n)
         begin
             awvalid <= 0;
             wvalid  <= 0;
             arvalid <= 0;
-            arready <= 0;
         end
         else
         begin
@@ -125,21 +125,55 @@ module tb_fir;
                 wvalid <= 0;
                 wdata <= 0;
             end
+            
             if(arready)
                 arvalid <= 0;
-            //if(rvalid)
-            //    rready <= 1;
+            if(rvalid)
+                rready <= 1;
         end
     end
-
+*/
 
 
 //*******************************************************************************************
-// - 
+// - configuration write / read task
+//*******************************************************************************************
+    // configuration write 
+    task configure_write;
+        input [pADDR_WIDTH-1:0] addr;
+        input [pDATA_WIDTH-1:0] data;
+    begin
+        @(posedge axis_clk);
+        awvalid <= 1;
+        wvalid  <= 1;
+        wdata   <= data;
+        awaddr  <= addr;
+        fork
+            begin
+                while( !awready) @(posedge axis_clk);
+                awvalid <= 0;
+                awaddr  <= 0;
+            end 
+            begin
+                while( !awready) @(posedge axis_clk)
+                wvalid  <= 0;
+                wdata   <= 0;
+            end
+        join
+    end
+    endtask
+//*******************************************************************************************
+// - configuration write / read task
 //*******************************************************************************************
     initial 
     begin
-
+        axis_rst_n = 1;
+        @(posedge axis_clk);
+        axis_rst_n = 0;
+        @(posedge axis_clk);
+        axis_rst_n = 1;
+        configure_write('h10,'h30);
+        configure_write('h0,'b111);
     end
 
 endmodule

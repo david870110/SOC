@@ -1,6 +1,6 @@
 module tb_fifo;
     parameter DATA_WIDTH    = 32;
-    parameter DEPTH         = 3;
+    parameter DEPTH         = 1;
 
     reg clk, rst_n;
     reg w_valid;
@@ -17,8 +17,8 @@ module tb_fifo;
     (
         .clk         (clk),
         .reset       (rst_n),
-        .fifo_full   (fifo_full),
-        .fifo_empty  (fifo_empty),
+        .pre_full   (fifo_full),
+        .pre_empty  (fifo_empty),
         .w_valid     (w_valid),
         .r_ready     (r_ready),
         .data_in     (data_in),
@@ -196,7 +196,7 @@ module tb_fifo;
     //  1. fifo empty testing ---------------------------------------
     if(!fifo_empty)
     begin
-        $display ("ERROR : fifo_empty is not working.");
+        $display ("    ERROR : fifo_empty is not working.");
         $stop;
     end
 
