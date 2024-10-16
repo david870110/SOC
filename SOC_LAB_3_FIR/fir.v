@@ -82,7 +82,7 @@ module fir
     )   aw_fifo
     (
         .clk         (axis_clk),
-        .reset       (axis_rst_n),
+        .rst_n       (axis_rst_n),
         .pre_full   (aw_fifo_full),
         .pre_empty  (aw_fifo_empty),
         .w_valid     (awvalid),
@@ -96,7 +96,7 @@ module fir
     )   w_fifo
     (
         .clk         (axis_clk),
-        .reset       (axis_rst_n),
+        .rst_n       (axis_rst_n),
         .pre_full   (w_fifo_full),
         .pre_empty  (w_fifo_empty),
         .w_valid     (wvalid),
@@ -231,7 +231,7 @@ module fir
     )   ss_fifo
     (
         clk         (axis_clk),
-        reset       (axis_rst_n),
+        rst_n       (axis_rst_n),
         fifo_full   (ss_fifo_full),
         fifo_empty  (ss_fifo_empty),
         w_valid     (ss_tvalid),

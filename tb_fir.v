@@ -100,12 +100,11 @@ module tb_fir;
         .axis_rst_n(axis_rst_n)
     );
     always #50 axis_clk = ~axis_clk;
-    initial
-        axis_clk = 0;
+
 //*******************************************************************************************
 // - Axi-lite Protocol Control
 //*******************************************************************************************
-/*    always @(posedge axis_clk or negedge axis_rst_n)
+always @(posedge axis_clk or negedge axis_rst_n)
     begin
         if(!axis_rst_n)
         begin
@@ -125,41 +124,38 @@ module tb_fir;
                 wvalid <= 0;
                 wdata <= 0;
             end
-            
+            /*
             if(arready)
                 arvalid <= 0;
             if(rvalid)
-                rready <= 1;
+                rready <= 1;*/
         end
     end
-*/
+
 
 
 //*******************************************************************************************
 // - configuration write / read task
 //*******************************************************************************************
     // configuration write 
-    task configure_write;
-        input [pADDR_WIDTH-1:0] addr;
-        input [pDATA_WIDTH-1:0] data;
+    task configure_write_addr;
+    input [pADDR_WIDTH-1:0] addr;
     begin
         @(posedge axis_clk);
         awvalid <= 1;
-        wvalid  <= 1;
-        wdata   <= data;
         awaddr  <= addr;
-        fork
-            begin
-                while( !awready) @(posedge axis_clk);
-                awvalid <= 0;
-                awaddr  <= 0;
-            end 
-            begin
-                while( !awready) @(posedge axis_clk)
-                wvalid  <= 0;
-                wdata   <= 0;
-            end
-        join
+        while( !awready) @(posedge axis_clk);
+            awaddr  <= 0;
+    end
+    endtask
+    task configure_write_data;
+    input [pDATA_WIDTH-1:0] data;
+    begin
+        @(posedge axis_clk);
+        wvalid <= 1;
+        wdata  <= data;
+        while( !wready) @(posedge axis_clk);
+            wdata  <= 0;
     end
     endtask
 //*******************************************************************************************
@@ -167,13 +163,20 @@ module tb_fir;
 //*******************************************************************************************
     initial 
     begin
+        axis_clk = 0;
         axis_rst_n = 1;
         @(posedge axis_clk);
         axis_rst_n = 0;
         @(posedge axis_clk);
         axis_rst_n = 1;
-        configure_write('h10,'h30);
-        configure_write('h0,'b111);
+        configure_write_addr('h10);
+        configure_write_addr('h0);
+        configure_write_addr('h0);
+        fork
+        configure_write_addr('h0);
+        configure_write_data('h30);
+        join
+        configure_write_data('b111);
     end
 
 endmodule
