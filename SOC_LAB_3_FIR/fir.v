@@ -124,9 +124,9 @@ module fir
     reg [pDATA_WIDTH-1 : 0] data_length;
     wire pop_cfg,pop_datalength,pop_tap;
 
-    assign pop_cfg         = pop_axi_fifo & (aw_fifo_out[pADDR_WIDTH-1 : 0] == 12'h0);
-    assign pop_datalength   = pop_axi_fifo & (aw_fifo_out[pADDR_WIDTH-1 : 0] >= 'h20) & (aw_fifo_out[pADDR_WIDTH-1 : 0] <= 'hFF);
-    assign pop_tap          = pop_axi_fifo & (aw_fifo_out[pADDR_WIDTH-1 : 0] >= 'h10) & (aw_fifo_out[pADDR_WIDTH-1 : 0] <= 'h14);
+    assign pop_cfg          = pop_axi_fifo & (aw_fifo_out == 12'h0);
+    assign pop_datalength   = pop_axi_fifo & (aw_fifo_out >= 'h10) & (aw_fifo_out <= 'h14);
+    assign pop_tap          = pop_axi_fifo & (aw_fifo_out >= 'h20) & (aw_fifo_out <= 'hFF);
 
     always@(posedge axis_clk or negedge axis_rst_n)
     begin
@@ -161,21 +161,23 @@ module fir
 
 //*******************************************************************************************
 // - tap_ram control
-//  - tap_ram address generation : tap_wr_addr
-//      - it will plus one after pop_tap until to Tape_Num.
+//  - tap_ram address : tap_addr_sel
+//      - it will plus one choose tap_wr_addr or tap_rd_addr.
+//          - tap_wr_addr : from axi-wr-fifo. 
+//          - tap_rd_addr : [11:2] to select read address. 
 //  - .EN is connect to pop_tap, when pop_tap high, it will write w_fifo_out data.
 //*******************************************************************************************
     localparam TAPE_NUM_BIT = $clog2(Tape_Num);
-    reg [TAPE_NUM_BIT-1 : 0] tap_wr_addr;
+    wire [TAPE_NUM_BIT-1 : 0] tap_wr_addr, tap_cal_addr, tap_rd_addr;
     wire [TAPE_NUM_BIT-1 : 0] tap_addr_sel;
     wire [pDATA_WIDTH-1 : 0] tap_data;
+    wire [TAPE_NUM_BIT-1 : 0] tap_rd_addr;    
 
-    // for PE-transfer-----------------------------------
-    wire [TAPE_NUM_BIT-1 : 0] pe_req_addr;     // ??? wait axis flow finished
-    // --------------------------------------------------
-
-    assign tap_addr_sel[TAPE_NUM_BIT-1 : 2] = (pop_tap) ? tap_wr_addr : pe_req_addr;// --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
-
+    assign tap_addr_sel[TAPE_NUM_BIT-1 : 2] = (pop_tap) ? tap_wr_addr :  // --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
+                                              (pe_req)  ? tap_cal_addr : 
+                                              tap_rd_addr ;
+    assign tap_wr_addr = (aw_fifo_out[11:2]-'h5);
+    assign tap_rd_addr = (araddr[11:2]-'h5);
 
     always@(posedge axis_clk or negedge axis_rst_n)
     begin
@@ -198,18 +200,24 @@ module fir
 
 //*******************************************************************************************
 // - axi-lite read
-//  - rvalid    : when address is asserted , data is valid.
+//  - tap_rd_data : to select tap_ram address data;
+//  - rvalid    : when tap_ram is select rd(not cal and write request), data is valid.
 //  - arready   : when arready is asserted , TB will reset arvalid and araddr in next cycle. 
 //*******************************************************************************************
-    assign rvalid   = arvalid;
-    assign arready  = arvalid;
-    // ??? need read axi-lite?
+    assign rvalid   = !pe_req & !pop_tap;
+    assign arready  = arvalid & rvalid;
+ //rready in rvalid out . ready sample valid and set valid down
+    assign rdata = (araddr == 12'h0)                        ? {29'b0,ap_start,ap_done,ap_idle}   : 
+                   ((araddr >= 'h10) & (araddr <= 'h14))    ?   data_length : 
+                   (araddr >= 'h20) & (araddr <= 'hFF)      ?   tap_data : 32'hFFFFFFFF;
+
 
     
 
 //*******************************************************************************************
 // - axi-stream write
 //*******************************************************************************************
+/*
     localparam AXIS_FIFO_DEPTH = 3;
 
     wire ss_fifo_full,ss_fifo_empty;
@@ -243,20 +251,20 @@ module fir
 //*******************************************************************************************
 // - PE-Transfer  systolic array convolution
 //*******************************************************************************************
-    localparam [1:0] IDLE = 2'b00;      // IDLE     : (when pop x and tap) ----> CAL
+    localparam [1:0] IDLE = 2'b00;      // IDLE     : (when pop x and tap)  ----> CAL
     localparam [1:0] CAL = 2'b01;       // CAL      : (when tap_count == 0) ----> POP (when tap_count == 0 & input_count == Tape_Num) ----> FINISH
-    localparam [1:0] POP = 2'b11;       // POP      : (when pop x and tap) ----> CAL
+    localparam [1:0] POP = 2'b11;       // POP      : (when pop x and tap)  ----> CAL
     localparam [1:0] FINISH = 2'b10;    // FINISH   : (when Setting Ending) ----> IDLE
 
-    reg [pDATA_WIDTH-1 : 0] x_input,tap_input;
-    reg [pDATA_WIDTH-1 : 0] PE_output [0 : Tape_Num-1];
+    reg [pDATA_WIDTH-1 : 0]  x_input,tap_input;
+    reg [pDATA_WIDTH-1 : 0]  PE_output [0 : Tape_Num-1];
     reg [TAPE_NUM_BIT-1 : 0] tap_count;
     reg [TAPE_NUM_BIT-1 : 0] input_count;
     reg [1:0] state;
     integer i;
 
     // tap
-    assign pe_req_addr = tap_count;
+    assign tap_rd_addr = tap_count;
 
     // x
     assign pe_ready = (state == IDLE) | (state == POP);
@@ -322,4 +330,6 @@ module fir
 //*******************************************************************************************
 // - axi-stream read
 //*******************************************************************************************
+
+*/
 endmodule

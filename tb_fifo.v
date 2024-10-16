@@ -17,10 +17,8 @@ module tb_fifo;
     (
         .clk         (clk),
         .reset       (rst_n),
-        .fifo_full   (),
-        .fifo_empty  (),
-        .pre_full    (fifo_full),
-        .pre_empty   (fifo_empty),
+        .fifo_full   (fifo_full),
+        .fifo_empty  (fifo_empty),
         .w_valid     (w_valid),
         .r_ready     (r_ready),
         .data_in     (data_in),
@@ -228,7 +226,6 @@ module tb_fifo;
         generate_data(i);
 
     //  4. random task ---------------------------------------------
-    
     random_data_generate(600);
 
     

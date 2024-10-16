@@ -17,8 +17,8 @@ module fifo
     // fifo status
     output              fifo_full,
     output              fifo_empty,
-    output              pre_full,
-    output              pre_empty,
+    //output              pre_full,
+    //output              pre_empty,
 
     // data protocol
     input               w_valid,
@@ -33,14 +33,14 @@ module fifo
     //*******************************************************************************************    
     reg [PTR_NUM_BITS-1 : 0] drp, wrp, rdp;
     wire fifo_pop,fifo_push;
-    assign pre_full = ((drp + fifo_push - fifo_pop) >= DEPTH);
-    assign pre_empty = ((drp + fifo_push - fifo_pop) <= 0);
     assign fifo_pop = !fifo_empty & r_ready;
     assign fifo_push = !fifo_full & w_valid;
-    
+
     // ---!!! fifo full and empty delay one cycle.
-    assign fifo_full  = (drp == DEPTH );
-    assign fifo_empty = (drp == 0); 
+    //assign fifo_full  = (drp == DEPTH );
+    //assign fifo_empty = (drp == 0); 
+    assign fifo_full = ((drp + fifo_push - fifo_pop) >= DEPTH);
+    assign fifo_empty = ((drp + fifo_push - fifo_pop) <= 0);
 
     always @(posedge clk or negedge reset) 
     begin
