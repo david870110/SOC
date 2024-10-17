@@ -266,9 +266,9 @@ module fir
 
     // --- IDLE > UPDATE > CAL_LATCH(1) > CAL_RAM(cycles) > UPDATE(1)(stream write)
     localparam [1:0] IDLE       = 2'b00;    // -> if(pop)pop x data to x latch / calculate result to output / enter UPDATE
-    localparam [1:0] CAL_LATCH  = 2'b01;   
-    localparam [1:0] CAL_RAM    = 2'b11;    
-    localparam [1:0] UPDATE     = 2'b10;    // send result and pop data to x_input and reset count -> stream write : 
+    localparam [1:0] CAL_LATCH  = 2'b01;    // -> pop data to x_input and calculate the mul result( tap 0 * h(wptr) )
+    localparam [1:0] CAL_RAM    = 2'b11;    // -> Cal and ag
+    localparam [1:0] UPDATE     = 2'b10;    // send result and and reset count -> stream to output 
 
     reg [pDATA_WIDTH-1 : 0]  x_input;
     reg [pDATA_WIDTH-1 : 0]  mul_result;
@@ -315,7 +315,8 @@ module fir
             end
             CAL_LATCH : 
             begin
-
+                //pop data to x_input ----------------
+                x_input <= x_data;
             end
             CAL_RAM : 
             begin
@@ -330,8 +331,8 @@ module fir
                 state       <= CAL_LATCH;
                 //reset PTR ----------------
                 input_count <= data_ram_wptr;
-                //pop data to x_input ----------------
-                x_input <= x_data;
+
+
                 x_input <= 
             end
             endcase
