@@ -2,6 +2,7 @@ module tb_fir;
     localparam pADDR_WIDTH = 12;
     localparam pDATA_WIDTH = 32;
     localparam Tape_Num    = 4'd11;
+    localparam Data_Num    = 600;
     reg axis_clk;
     reg axis_rst_n;
 
@@ -39,14 +40,14 @@ module tb_fir;
     wire tap_EN;
     wire [(pDATA_WIDTH-1):0] tap_Di;
     wire [(pADDR_WIDTH-1):0] tap_A;
-    reg [(pDATA_WIDTH-1):0] tap_Do;
+    wire [(pDATA_WIDTH-1):0] tap_Do;
 
     // bram for data RAM 
     wire [3:0] data_WE;
     wire data_EN;
     wire [(pDATA_WIDTH-1):0] data_Di;
     wire [(pADDR_WIDTH-1):0] data_A;
-    reg [(pDATA_WIDTH-1):0] data_Do;
+    wire [(pDATA_WIDTH-1):0] data_Do;
 
 
     fir #(
@@ -86,7 +87,7 @@ module tb_fir;
         .tap_WE(tap_WE),
         .tap_EN(tap_EN),
         .tap_Di(tap_Di),
-        .tap_A(tap_A),
+        .tap_A (tap_A),
         .tap_Do(tap_Do),
 
         // bram for data RAM
@@ -111,6 +112,8 @@ always @(posedge axis_clk or negedge axis_rst_n)
             awvalid <= 0;
             wvalid  <= 0;
             arvalid <= 0;
+
+            ss_tvalid <= 0;
         end
         else
         begin
@@ -124,6 +127,8 @@ always @(posedge axis_clk or negedge axis_rst_n)
                 wvalid <= 0;
                 wdata <= 0;
             end
+            if(ss_tready)
+                ss_tvalid <= 0;
             /*
             if(arready)
                 arvalid <= 0;
@@ -134,9 +139,9 @@ always @(posedge axis_clk or negedge axis_rst_n)
 
 
 
-//*******************************************************************************************
-// - configuration write / read task
-//*******************************************************************************************
+// *******************************************************************************************
+// - axi-lite write / read task
+// *******************************************************************************************
     // configuration write 
     task configure_write_addr;
     input [pADDR_WIDTH-1:0] addr;
@@ -158,25 +163,123 @@ always @(posedge axis_clk or negedge axis_rst_n)
             wdata  <= 0;
     end
     endtask
+    task configurae_write;
+    input [pADDR_WIDTH-1:0] addr;
+    input [pDATA_WIDTH-1:0] data;
+    input [6:0] random_cycle_mode;
+    fork
+        if(random_cycle_mode > 0)
+        begin
+            repeat({$random} % random_cycle_mode) @(posedge axis_clk);
+            configure_write_addr(addr);
+        end
+        else
+            configure_write_addr(addr);
+        if(random_cycle_mode > 0)
+        begin
+            repeat({$random} % random_cycle_mode) @(posedge axis_clk);
+            configure_write_data(data); 
+        end
+        else
+            configure_write_data(data); 
+    join
+    endtask
 //*******************************************************************************************
-// - configuration write / read task
+// - axi-stream write / read task
 //*******************************************************************************************
+    task stream_write;
+    input [pDATA_WIDTH-1:0] data;
+    input last;
+    begin
+        @(posedge axis_clk);
+        ss_tvalid <= 1;
+        ss_tdata  <= data;
+        while( !ss_tready) @(posedge axis_clk);
+            ss_tdata  <= 0;
+    end
+    endtask
+//*******************************************************************************************
+// - data preprocess
+//*******************************************************************************************
+// tap-------------------
+    reg signed [31:0] coef [0:Tape_Num-1]; // fill in coef 
+    initial
+    begin
+        coef[0]  =  32'd0;
+        coef[1]  = -32'd10;
+        coef[2]  = -32'd9;
+        coef[3]  =  32'd23;
+        coef[4]  =  32'd56;
+        coef[5]  =  32'd63;
+        coef[6]  =  32'd56;
+        coef[7]  =  32'd23;
+        coef[8]  = -32'd9;
+        coef[9]  = -32'd10;
+        coef[10] =  32'd0;
+    end
+
+// data------------------
+    reg         [(pDATA_WIDTH-1):0] data_length;
+    reg signed  [(pDATA_WIDTH-1):0] Din_list    [0:(Data_Num-1)];
+    reg signed  [(pDATA_WIDTH-1):0] golden_list [0:(Data_Num-1)];
+
+    integer Din, golden, input_data, golden_data, m;
+    initial begin
+        data_length = 0;
+        Din = $fopen("./input.dat","r");
+        golden = $fopen("./out_gold.dat","r");
+        for(m=0; m<Data_Num; m=m+1) begin
+            input_data = $fscanf(Din,"%d", Din_list[m]);
+            golden_data = $fscanf(golden,"%d", golden_list[m]);
+            data_length = data_length + 1;
+        end
+    end
+
+//*******************************************************************************************
+// - Testing start
+//*******************************************************************************************
+    bram #(11) tap_ram
+    (
+        .CLK        (axis_clk),
+        .WE         (tap_WE),
+        .EN         (tap_EN),
+        .Di         (tap_Di),
+        .Do         (tap_Do),
+        .A          (tap_A)
+    );
+    bram #(10) data_ram
+    (
+        .CLK        (axis_clk),
+        .WE         (data_WE),
+        .EN         (data_EN),
+        .Di         (data_Di),
+        .Do         (data_Do),
+        .A          (data_A)
+    );
+//*******************************************************************************************
+// - Testing start
+//*******************************************************************************************
+    integer i;
     initial 
     begin
+        // reset ------------------------------
         axis_clk = 0;
         axis_rst_n = 1;
         @(posedge axis_clk);
         axis_rst_n = 0;
         @(posedge axis_clk);
         axis_rst_n = 1;
-        configure_write_addr('h10);
-        configure_write_addr('h0);
-        configure_write_addr('h0);
-        fork
-        configure_write_addr('h0);
-        configure_write_data('h30);
-        join
-        configure_write_data('b111);
-    end
+        // axi-lite write ------------------------------
+        for(i = 0; i<Tape_Num; i = i+1)
+            configurae_write('h20+(i<<2),coef[i],5);
+        configurae_write(0,'b111,4);
 
+        for(i = 0; i<Data_Num; i = i+1)
+        begin
+            if(i == (Data_Num - 1))
+                stream_write(Din_list[i],1);
+            else
+                stream_write(Din_list[i],0);
+        end
+    end
 endmodule

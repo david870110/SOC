@@ -168,28 +168,24 @@ module fir
 //  - .EN is connect to pop_tap, when pop_tap high, it will write w_fifo_out data.
 //*******************************************************************************************
     localparam TAPE_NUM_BIT = $clog2(Tape_Num);
-    wire [TAPE_NUM_BIT-1 : 0] tap_wr_addr, tap_cal_addr, tap_rd_addr;
-    wire [TAPE_NUM_BIT-1 : 0] tap_addr_sel;
+    wire [pADDR_WIDTH-1 : 0] tap_wr_addr, tap_cal_addr, tap_rd_addr;
+    wire [pADDR_WIDTH-1 : 0] tap_addr_sel;
     wire [pDATA_WIDTH-1 : 0] tap_data;
     wire pe_req;
 
-    assign tap_addr_sel[TAPE_NUM_BIT-1 : 2] = (pop_tap) ? tap_wr_addr :  // --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
+    assign tap_addr_sel[pADDR_WIDTH-1 : 0] = (pop_tap) ? tap_wr_addr :  // --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
                                               (pe_req)  ? tap_cal_addr : 
                                               tap_rd_addr ;
 
-    assign tap_wr_addr = (aw_fifo_out[11:2]-'h5);
-    assign tap_rd_addr = (araddr[11:2]-'h5);
+    assign tap_wr_addr = aw_fifo_out - 'h20;
+    assign tap_rd_addr = araddr - 'h20;
 
-
-    bram #(11) tap_ram
-    (
-        .CLK        (axis_clk),
-        .WE         (4'b1111),
-        .EN         (pop_tap),
-        .Di         (w_fifo_out),
-        .Do         (tap_data),
-        .A          (tap_addr_sel)
-    );
+    // assign port ------------------------------
+    assign tap_WE = 4'b1111;
+    assign tap_EN = pop_tap;
+    assign tap_Di = w_fifo_out;
+    assign tap_A  = tap_addr_sel;
+    assign tap_Do = tap_data;    
 
 //*******************************************************************************************
 // - axi-lite read
@@ -210,35 +206,63 @@ module fir
 //*******************************************************************************************
 // - axi-stream write
 //*******************************************************************************************
-
+    localparam DATA_RAM_DEPTH = 10;
+    localparam DATA_NUM_BIT = $clog2(DATA_RAM_DEPTH);
     localparam AXIS_FIFO_DEPTH = 3;
 
     wire ss_fifo_full,ss_fifo_empty;
     wire pop_ss_fifo;
     wire [pDATA_WIDTH-1 : 0] ss_fifo_out;
+    wire [pDATA_WIDTH-1 : 0] x_data;
+    reg  [DATA_NUM_BIT-1 : 0] data_count;
 
-    // for PE-transfer-----------------------------------
-    wire[pDATA_WIDTH-1 : 0] x_data;
-    wire pe_ready;
-    // --------------------------------------------------
-
-    assign ss_tready        = !ss_fifo_full;
-    assign pop_ss_fifo      = pe_ready & !ss_fifo_empty; //unit calculate end can pop next data.
+    assign ss_tready        = ss_tvalid & !ss_fifo_full;
+    assign pop_ss_fifo      = !ss_fifo_empty; //unit calculate end can pop next data.
 
     fifo
     #(  .WIDTH      (pDATA_WIDTH),
         .DEPTH      (AXIS_FIFO_DEPTH)
     )   ss_fifo
     (
-        clk         (axis_clk),
-        rst_n       (axis_rst_n),
-        fifo_full   (ss_fifo_full),
-        fifo_empty  (ss_fifo_empty),
-        w_valid     (ss_tvalid),
-        r_ready     (pe_ready),
-        data_in     (ss_tdata),
-        data_out    (x_data)
+        .clk         (axis_clk),
+        .rst_n       (axis_rst_n),
+        .pre_full   (ss_fifo_full),
+        .pre_empty  (ss_fifo_empty),
+        .w_valid     (ss_tvalid),
+        .r_ready     (pop_ss_fifo),
+        .data_in     (ss_tdata),
+        .data_out    (x_data)
     );
+
+    wire [pADDR_WIDTH-1 : 0] data_addr_sel;
+    wire [pADDR_WIDTH-1 : 0] data_wr_addr, data_rd_addr;
+    wire [pDATA_WIDTH-1 : 0] pe_data_input;
+    
+    
+    assign data_ram_wr      = pop_ss_fifo; // ---!!! check when PE request read data, and fifo pop write data, implict.
+    assign data_wr_addr     = data_count << 2;
+    assign data_addr_sel    = (data_ram_wr) ? data_wr_addr : data_rd_addr;  
+
+    always@(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+        begin
+            data_count <= 0;
+        end
+        else
+        begin
+            if(data_ram_wr) 
+                data_count <= data_count + 1;
+        end
+    end
+
+    assign data_WE          = 4'b1111;
+    assign data_EN          = data_ram_wr;
+    assign data_Di          = x_data;
+    assign data_A           = data_addr_sel;
+    assign data_Do          = pe_data_input;
+
+
 
 
 //*******************************************************************************************
