@@ -261,16 +261,21 @@ module fir
 //*******************************************************************************************
 // - PE-Transfer  systolic array convolution
 //*******************************************************************************************
-    localparam [1:0] IDLE       = 2'b00;    // -> pop x data to x latch / 
+    localparam DATA_DEPTH = 10;
+    localparam DATA_DEPTH_BIT = $clog2(DATA_DEPTH);
+
+    // --- IDLE > UPDATE > CAL_LATCH(1) > CAL_RAM(cycles) > UPDATE(1)(stream write)
+    localparam [1:0] IDLE       = 2'b00;    // -> if(pop)pop x data to x latch / calculate result to output / enter UPDATE
     localparam [1:0] CAL_LATCH  = 2'b01;   
     localparam [1:0] CAL_RAM    = 2'b11;    
-    localparam [1:0] UPDATE     = 2'b10;    
+    localparam [1:0] UPDATE     = 2'b10;    // send result and pop data to x_input and reset count -> stream write : 
 
     reg [pDATA_WIDTH-1 : 0]  x_input;
     reg [pDATA_WIDTH-1 : 0]  mul_result;
 
     reg [pDATA_WIDTH-1 : 0]  PE_output [0 : Tape_Num-1];
     reg [TAPE_NUM_BIT-1 : 0] input_count;
+    reg [DATA_DEPTH_BIT-1 : 0] data_ram_wptr;
     reg [1:0] state;
     integer i;
 
@@ -301,7 +306,7 @@ module fir
             begin
                 if(pop_ss_fifo)
                 begin
-                    state       <= CAL_LATCH;
+                    state       <= UPDATE;
                     x_input     <= x_data;
                     mul_result  <= x_data * tap_data;
                     if(input_count > 0)
@@ -310,31 +315,24 @@ module fir
             end
             CAL_LATCH : 
             begin
-                if(tap_count == 0)
-                begin
-                    state       <= POP;
-                    tap_count   <= Tape_Num - input_count; // delay 1 , so need in front of enter state.
-                end
-                if((tap_count == 0) & (input_count == Tape_Num - 1))
-                    state       <= FINISH;
 
-                PE_output[tap_count]    <= x_input * tap_input + PE_output[tap_count];
-                tap_input               <= tap_data;
-                tap_count               <= tap_count-1;
             end
-            POP : 
+            CAL_RAM : 
             begin
-                if(pop_ss_fifo)
+                if()
                 begin
-                    state       <= CAL;
-                    x_input     <= x_data;
-                    tap_input   <= tap_data;
-                    input_count <= input_count + 1; // that maybe can do better to reduce gate count. --JIANG
+
                 end
             end
-            FINISH : //PE Finish
+            UPDATE : //PE Finish
             begin
-                state <= IDLE;
+                //output result ----------------
+                state       <= CAL_LATCH;
+                //reset PTR ----------------
+                input_count <= data_ram_wptr;
+                //pop data to x_input ----------------
+                x_input <= x_data;
+                x_input <= 
             end
             endcase
     end
