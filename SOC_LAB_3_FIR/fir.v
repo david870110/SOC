@@ -199,7 +199,7 @@ module fir
 //*******************************************************************************************
     assign rvalid   = !pe_req & !pop_tap;
     assign arready  = arvalid & rvalid;
- //rready in rvalid out . ready sample valid and set valid down
+// rready in rvalid out . ready sample valid and set valid down
     assign rdata = (araddr == 12'h0)                        ? {29'b0,ap_start,ap_done,ap_idle}   : 
                    ((araddr >= 'h10) & (araddr <= 'h14))    ?   data_length : 
                    ((araddr >= 'h20) & (araddr <= 'hFF))    ?   tap_data : 32'hFFFFFFFF;
@@ -210,7 +210,7 @@ module fir
 //*******************************************************************************************
 // - axi-stream write
 //*******************************************************************************************
-/*
+
     localparam AXIS_FIFO_DEPTH = 3;
 
     wire ss_fifo_full,ss_fifo_empty;
@@ -244,6 +244,7 @@ module fir
 //*******************************************************************************************
 // - PE-Transfer  systolic array convolution
 //*******************************************************************************************
+/*
     localparam [1:0] IDLE = 2'b00;      // IDLE     : (when pop x and tap)  ----> CAL
     localparam [1:0] CAL = 2'b01;       // CAL      : (when tap_count == 0) ----> POP (when tap_count == 0 & input_count == Tape_Num) ----> FINISH
     localparam [1:0] POP = 2'b11;       // POP      : (when pop x and tap)  ----> CAL
