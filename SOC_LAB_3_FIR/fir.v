@@ -167,7 +167,6 @@ module fir
 //          - tap_rd_addr : [11:2] to select read address. 
 //  - .EN is connect to pop_tap, when pop_tap high, it will write w_fifo_out data.
 //*******************************************************************************************
-    localparam TAPE_NUM_BIT = $clog2(Tape_Num);
     wire [pADDR_WIDTH-1 : 0] tap_wr_addr, tap_cal_addr, tap_rd_addr;
     wire [pADDR_WIDTH-1 : 0] tap_addr_sel;
     wire [pDATA_WIDTH-1 : 0] tap_data;
@@ -261,6 +260,79 @@ module fir
 //*******************************************************************************************
 // - PE-Transfer  systolic array convolution
 //*******************************************************************************************
+localparam TAPE_NUM_BIT = $clog2(Tape_Num);
+localparam DATA_RAM_NUM = 10;
+localparam DATA_NUM_BIT = $clog2(DATA_RAM_NUM);
+
+reg [TAPE_NUM_BIT-1 : 0] tap_ptr, tap_count;
+reg [DATA_NUM_BIT-1 : 0] data_ptr;
+reg [DATA_NUM_BIT-1 : 0] data_ram_addr;
+reg [pDATA_WIDTH-1  : 0] latch_final;
+wire pop;
+wire cal_tap_final,cal_x_data;
+
+assign pop              = cal_tap_final & !ss_fifo_empty;
+assign pe_req_data      = cal_tap_final;
+assign data_en          = cal_x_data;
+assign cal_tap_final    = tap_ptr == tap_count;
+assign cal_x_data       = tap_ptr == 0;
+
+
+always@(posedge clk)
+begin
+    latch_final <= x_data;
+end
+always@(posedge clk or negedge !rst_n)
+begin
+    if(!rst_n)
+    begin
+        tap_count       <= 1;
+        tap_ptr         <= 0;
+        data_ptr        <= 0;
+        data_ram_addr   <= 0;
+    end
+    else
+    begin
+        if(pop)
+        begin
+            data_ptr        <= data_ram_addr;
+            tap_ptr         <= 0;
+            if(tap_count < 10)
+                tap_count <= tap_count + 1;
+        end
+        else
+        begin
+            if(data_ptr > 0)
+                data_ptr <= data_ptr - 1;
+            else
+                data_ptr <= 'd9;
+            if(tap_ptr < 'd11)
+                tap_ptr <= tap_ptr + 1;
+            else
+                tap_ptr <= 0;
+        end
+    end
+end
+
+//*******************************************************************************************
+// - PE-Port  CALCULATION
+//*******************************************************************************************
+wire [pDATA_WIDTH-1  : 0] mul_a,mul_b,result;
+wire x_data_sel;
+assign mul_a = (x_data_sel) ? x_data : 
+    pe
+    #(  .pDATA_WIDTH (pDATA_WIDTH),
+    )   pe
+    (
+        .clk    (axis_clk),
+        .rst_n  (axis_rst_n),
+        .mul_a  (),
+        .mul_b  (),
+        .acc_on (!cal_x_data),
+        .cal    (),
+        .result (result)
+    );
+/*
     localparam DATA_DEPTH = 10;
     localparam DATA_DEPTH_BIT = $clog2(DATA_DEPTH);
 
@@ -337,6 +409,7 @@ module fir
             end
             endcase
     end
+*/
 /*
     localparam [1:0] IDLE = 2'b00;      // IDLE     : (when pop x and tap)  ----> CAL
     localparam [1:0] CAL = 2'b01;       // CAL      : (when tap_count == 0) ----> POP (when tap_count == 0 & input_count == Tape_Num) ----> FINISH
