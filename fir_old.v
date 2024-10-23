@@ -181,11 +181,11 @@ module fir
 
 
     // assign port ------------------------------
-    assign tap_WE   = 4'b1111;
-    assign tap_EN   = pop_tap;
-    assign tap_Di   = w_fifo_out;
-    assign tap_A    = tap_addr_sel;
-    assign tap_data = tap_Do;    
+    assign tap_WE = 4'b1111;
+    assign tap_EN = pop_tap;
+    assign tap_Di = w_fifo_out;
+    assign tap_A  = tap_addr_sel;
+    assign tap_Do = tap_data;    
 
 //*******************************************************************************************
 // - axi-lite read
@@ -241,7 +241,7 @@ module fir
                     if(tap_count < (Tape_Num - 1))
                         tap_count <= tap_count + 1;  
                 end
-                if(tap_ptr >= tap_count)
+                if(tap_ptr == tap_count)
                     tap_ptr <= 0;
                 else
                     if(cal_on)
@@ -273,8 +273,7 @@ module fir
     
     always@(posedge axis_clk)
     begin
-        test_latch <= ss_tdata;
-        latch_final <= test_latch;
+        latch_final <= ss_tdata;
     end
     // Set data address and latch data--------------------------------
     assign data_addr_sel    = (data_EN) ? data_wr_addr : data_rd_addr; 
@@ -297,18 +296,17 @@ module fir
 //*******************************************************************************************
 // - PE-Port  CALCULATION
 //*******************************************************************************************
-    reg  [pDATA_WIDTH-1  : 0] test_latch;
     wire [pDATA_WIDTH-1  : 0] mul_a,mul_b,result;
     wire x_data_sel;
     wire acc_on;
     assign cal_on       = !((tap_ptr == 0) & (ss_tready == 0));
     assign acc_on       = (tap_count > 0) & (tap_ptr != 1);
     assign x_data_sel   = !acc_on;
-    assign mul_a        = (x_data_sel) ? test_latch : data_Do;
+    assign mul_a        = (x_data_sel) ? ss_tdata : data_Do;
     assign mul_b        = tap_data;
 
     pe
-    #(  .pDATA_WIDTH (pDATA_WIDTH)
+    #(  .pDATA_WIDTH (pDATA_WIDTH),
     )   pe
     (
         .clk    (axis_clk),
@@ -319,6 +317,161 @@ module fir
         .cal    (cal_on),
         .result (result)
     );
+/*
+    localparam DATA_DEPTH = 10;
+    localparam DATA_DEPTH_BIT = $clog2(DATA_DEPTH);
+
+    // --- IDLE > UPDATE > CAL_LATCH(1) > CAL_RAM(cycles) > UPDATE(1)(stream write)
+    localparam [1:0] IDLE       = 2'b00;    // -> if(pop)pop x data to x latch / calculate result to output / enter UPDATE
+    localparam [1:0] CAL_LATCH  = 2'b01;    // -> pop data to x_input and calculate the mul result( tap 0 * h(wptr) )
+    localparam [1:0] CAL_RAM    = 2'b11;    // -> Cal and ag
+    localparam [1:0] UPDATE     = 2'b10;    // send result and and reset count -> stream to output 
+
+    reg [pDATA_WIDTH-1 : 0]  x_input;
+    reg [pDATA_WIDTH-1 : 0]  mul_result;
+
+    reg [pDATA_WIDTH-1 : 0]  PE_output [0 : Tape_Num-1];
+    reg [TAPE_NUM_BIT-1 : 0] input_count;
+    reg [DATA_DEPTH_BIT-1 : 0] data_ram_wptr;
+    reg [1:0] state;
+    integer i;
+
+
+    assign pe_req_data = (state == IDLE | state == UPDATE);
+    // tap
+    assign tap_rd_addr = tap_count;
+
+    // x
+    assign pe_ready = (state == IDLE) | (state == POP);
+
+
+
+
+    always@(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+        begin
+            state <= IDLE;
+            tap_input   <= 0;
+            tap_count   <= 0;
+            input_count <= 0;
+
+        end
+        else 
+            case(state)
+            IDLE : 
+            begin
+                if(pop_ss_fifo)
+                begin
+                    state       <= UPDATE;
+                    x_input     <= x_data;
+                    mul_result  <= x_data * tap_data;
+                    if(input_count > 0)
+                        input_count <= input_count - 1; 
+                end
+            end
+            CAL_LATCH : 
+            begin
+                //pop data to x_input ----------------
+                x_input <= x_data;
+            end
+            CAL_RAM : 
+            begin
+                if()
+                begin
+
+                end
+            end
+            UPDATE : //PE Finish
+            begin
+                //output result ----------------
+                state       <= CAL_LATCH;
+                //reset PTR ----------------
+                input_count <= data_ram_wptr;
+
+
+                x_input <= 
+            end
+            endcase
+    end
+*/
+/*
+    localparam [1:0] IDLE = 2'b00;      // IDLE     : (when pop x and tap)  ----> CAL
+    localparam [1:0] CAL = 2'b01;       // CAL      : (when tap_count == 0) ----> POP (when tap_count == 0 & input_count == Tape_Num) ----> FINISH
+    localparam [1:0] POP = 2'b11;       // POP      : (when pop x and tap)  ----> CAL
+    localparam [1:0] FINISH = 2'b10;    // FINISH   : (when Setting Ending) ----> IDLE
+
+    reg [pDATA_WIDTH-1 : 0]  x_input,tap_input;
+    reg [pDATA_WIDTH-1 : 0]  PE_output [0 : Tape_Num-1];
+    reg [TAPE_NUM_BIT-1 : 0] tap_count;
+    reg [TAPE_NUM_BIT-1 : 0] input_count;
+    reg [1:0] state;
+    integer i;
+
+    // tap
+    assign tap_rd_addr = tap_count;
+
+    // x
+    assign pe_ready = (state == IDLE) | (state == POP);
+
+
+
+
+    always@(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+        begin
+            state <= IDLE;
+            x_input     <= 0;
+            tap_input   <= 0;
+            tap_count   <= Tape_Num;
+            input_count <= 0;
+            for(i = 0 ; i < Tape_Num ; i = i+1)
+                PE_output[i]  <= 0;
+        end
+        else 
+            case(state)
+            IDLE : 
+            begin
+                if(pop_ss_fifo)
+                begin
+                    state       <= CAL;
+                    x_input     <= x_data;
+                    tap_input   <= tap_data;
+                    input_count <= input_count + 1; // that maybe can do better to reduce gate count. --JIANG
+                end
+            end
+            CAL : 
+            begin
+                if(tap_count == 0)
+                begin
+                    state       <= POP;
+                    tap_count   <= Tape_Num - input_count; // delay 1 , so need in front of enter state.
+                end
+                if((tap_count == 0) & (input_count == Tape_Num - 1))
+                    state       <= FINISH;
+
+                PE_output[tap_count]    <= x_input * tap_input + PE_output[tap_count];
+                tap_input               <= tap_data;
+                tap_count               <= tap_count-1;
+            end
+            POP : 
+            begin
+                if(pop_ss_fifo)
+                begin
+                    state       <= CAL;
+                    x_input     <= x_data;
+                    tap_input   <= tap_data;
+                    input_count <= input_count + 1; // that maybe can do better to reduce gate count. --JIANG
+                end
+            end
+            FINISH : //PE Finish
+            begin
+                state <= IDLE;
+            end
+            endcase
+    end
+*/
 
 //*******************************************************************************************
 // - axi-stream read

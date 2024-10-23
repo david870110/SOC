@@ -11,8 +11,9 @@ module pe
     input rst_n,
     output [pDATA_WIDTH-1:0] result
 );
-    wire mul_result = mul_a * mul_b;
+    wire [pDATA_WIDTH-1:0] mul_result;
     reg [pDATA_WIDTH-1:0] acc_result;
+    assign mul_result = mul_a * mul_b;
     assign result = acc_result;
     always@(posedge clk or negedge rst_n)
     begin
