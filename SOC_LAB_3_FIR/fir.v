@@ -214,16 +214,18 @@ module fir
     reg [DATA_NUM_BIT-1 : 0] data_ptr;
     reg [DATA_NUM_BIT-1 : 0] data_addr;
     reg pe_start;
-    wire cal_on;
-
+    reg cal_on;
+    wire cal_first,cal_final,ptr_reset;
+    assign cal_first = ((tap_ptr == 1) | tap_count == 0);
+    assign cal_final = tap_ptr == 0 | tap_count == 0;
+    assign ptr_reset = (tap_ptr == (tap_count - 1) )| tap_count == 0;
+    assign ss_tready = (ss_tvalid & cal_first);
+    
     always@(posedge axis_clk or negedge axis_rst_n)
     begin
         if(!axis_rst_n)
         begin
-            tap_ptr     <= 0;
-            tap_count   <= 0;
-            data_ptr    <= 0;
-            data_addr   <= 0;
+            cal_on      <= 1;
             pe_start    <= 0;
         end
         else
@@ -232,44 +234,73 @@ module fir
                 pe_start <= 1;
             if(ap_done)
                 pe_start <= 0;
-            if(pe_start)
-            begin
-                if(ss_tready) // - final data calculate : reset data_ptr/tap_ptr, tap_count++, data_addr++
-                begin
-                    data_addr <= data_addr + 1;
-                    data_ptr <= data_addr;  
-                    if(tap_count < (Tape_Num - 1))
-                        tap_count <= tap_count + 1;  
-                end
-                if(tap_ptr >= tap_count)
-                    tap_ptr <= 0;
-                else
-                    if(cal_on)
-                        tap_ptr <= tap_ptr + 1;
-                if(cal_on)
-                    if(data_ptr>0)
-                        data_ptr <= data_ptr -1;
-                    else
-                        data_ptr <= DATA_RAM_NUM - 1;
-            end
-            else
-            begin
-                tap_ptr     <= 0;
-                tap_count   <= 0;
-                data_ptr    <= 0;
-                data_addr   <= 0;
-            end
+            if(cal_final & !ss_tvalid)
+                cal_on <= 0;
+            if(cal_first)
+                cal_on <= 1;
         end
     end
 
-
+    always@(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+        begin
+            tap_ptr     <= 0;
+            tap_count   <= 0;
+        end
+        else
+        begin
+            if(pe_start)
+            begin
+                if(tap_count == 0)
+                begin
+                    tap_ptr <= 0;
+                end
+                else if(tap_count == 1)
+                begin
+                    if(tap_ptr == (tap_count-1))
+                        tap_ptr <= 1;
+                end
+                else
+                begin
+                    if(tap_ptr == (tap_count-1))
+                        tap_ptr <= 0;
+                    else if(cal_on)
+                        tap_ptr <= tap_ptr + 1;
+                end
+                if(tap_count<10 & ss_tready)
+                    tap_count <= tap_count + 1;
+            end
+            if(tap_count == 0 & ss_tready)
+                tap_count <= tap_count + 1; 
+        end
+    end
+/*
+    always@(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+        begin
+            data_ptr    <= 0;
+            data_addr   <= 0;
+        end
+        else
+        begin
+            if(cal_final & cal_on)
+                data_addr <= data_addr + 1;
+            if(ptr_reset)
+                data_ptr <= data_addr;
+            else if(cal_on)
+                data_ptr <= data_ptr + 1;
+        end
+    end
+*/
 
 //*******************************************************************************************
 // - write sram
 //*******************************************************************************************
-    wire [pADDR_WIDTH-1 : 0] data_addr_sel;
+/*    wire [pADDR_WIDTH-1 : 0] data_addr_sel;
     wire [pADDR_WIDTH-1 : 0] data_wr_addr, data_rd_addr;
-    reg  [pDATA_WIDTH-1  : 0] latch_final;
+    reg  [pDATA_WIDTH-1  : 0] test_latch, latch_final;
     
     always@(posedge axis_clk)
     begin
@@ -281,9 +312,6 @@ module fir
     assign data_wr_addr     = data_addr << 2;
     assign data_rd_addr     = data_ptr  << 2; 
 
-    // stream port----------------------------------------------------
-    assign ss_tready        = (ss_tvalid & tap_ptr == 0);
-
     // data ram port--------------------------------------------------
     assign data_WE          = 4'b1111;
     assign data_EN          = ss_tready;
@@ -293,7 +321,7 @@ module fir
     // tap control ---------------------------------------------------
     assign tap_cal_addr     = tap_ptr << 2 ; 
     assign pe_req           = pe_start | ss_tready; 
-
+*/
 //*******************************************************************************************
 // - PE-Port  CALCULATION
 //*******************************************************************************************
