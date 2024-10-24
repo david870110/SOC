@@ -198,6 +198,41 @@ always @(posedge axis_clk or negedge axis_rst_n)
             ss_tdata  <= 0;
     end
     endtask
+
+
+    reg [9:0] tready_ws; // controlled by testbench zero-wait 
+    reg [9:0]  valid_wc; // local variable to count wait-state
+
+    always @(posedge axis_clk or negedge axis_rst_n) 
+    begin
+        if( !axis_rst_n) 
+        begin
+            sm_tready <= 0;   
+            valid_wc <= tready_ws;
+        end 
+        else 
+        begin
+            if( valid_wc >= 1) 
+            begin
+                sm_tready <= 0;
+                if(tready_ws > 0) 
+                    valid_wc = valid_wc - 1;
+            end 
+            else 
+            begin 
+                sm_tready <= 1; // (tready_ws = 0 | (m_tvalid & m_tready) != 1) , ws = 0 --> wait state is zero , and initial wait state is zero or ready & valid is zero 
+                if( sm_tvalid & sm_tready) 
+                begin
+
+                    if( tready_ws > 0) //issue : will valid_wc = 0 , tws > 0 ,valid_wc overflow?
+                    begin
+                        sm_tready <= 0;
+                        valid_wc <= tready_ws - 1;
+                    end
+                end 
+            end
+        end
+    end
 //*******************************************************************************************
 // - data preprocess
 //*******************************************************************************************
