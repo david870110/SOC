@@ -306,10 +306,11 @@ module fir
             begin
                 if(ptr_reset)
                     data_ptr <= data_addr;
-                else if(data_ptr > 0)
-                    data_ptr <= data_ptr - 1; 
-                else
-                    data_ptr <= 'd9;
+                else if(!cal_final)
+                    if(data_ptr > 0)
+                        data_ptr <= data_ptr - 1; 
+                    else
+                        data_ptr <= 'd9;
             end
         end
     end
@@ -318,14 +319,13 @@ module fir
 //*******************************************************************************************
 // - write sram
 //*******************************************************************************************
-/*    wire [pADDR_WIDTH-1 : 0] data_addr_sel;
+    wire [pADDR_WIDTH-1 : 0] data_addr_sel;
     wire [pADDR_WIDTH-1 : 0] data_wr_addr, data_rd_addr;
-    reg  [pDATA_WIDTH-1  : 0] test_latch, latch_final;
+    reg  [pDATA_WIDTH-1  : 0] latch_final;
     
     always@(posedge axis_clk)
     begin
-        test_latch <= ss_tdata;
-        latch_final <= test_latch;
+        latch_final <= ss_tdata;
     end
     // Set data address and latch data--------------------------------
     assign data_addr_sel    = (data_EN) ? data_wr_addr : data_rd_addr; 
@@ -341,19 +341,16 @@ module fir
     // tap control ---------------------------------------------------
 
     assign pe_req           = pe_start | ss_tready; 
-*/
+
 //*******************************************************************************************
 // - PE-Port  CALCULATION
 //*******************************************************************************************
-/*
-    reg  [pDATA_WIDTH-1  : 0] test_latch;
     wire [pDATA_WIDTH-1  : 0] mul_a,mul_b,result;
-    wire x_data_sel;
+    wire ss_data_sel;
     wire acc_on;
-    assign cal_on       = !((tap_ptr == 0) & (ss_tready == 0));
-    assign acc_on       = (tap_count > 0) & (tap_ptr != 1);
-    assign x_data_sel   = !acc_on;
-    assign mul_a        = (x_data_sel) ? test_latch : data_Do;
+    assign acc_on       = cal_on & !cal_first;
+    assign ss_data_sel   = !acc_on;
+    assign mul_a        = (ss_data_sel) ? ss_tdata : data_Do;
     assign mul_b        = tap_data;
 
     pe
@@ -368,7 +365,7 @@ module fir
         .cal    (cal_on),
         .result (result)
     );
-*/
+
 //*******************************************************************************************
 // - axi-stream read
 //*******************************************************************************************
