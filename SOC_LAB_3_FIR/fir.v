@@ -172,9 +172,7 @@ module fir
     wire [pDATA_WIDTH-1 : 0] tap_data;
     wire pe_req;
 
-    assign tap_addr_sel[pADDR_WIDTH-1 : 0] = (pop_tap) ? tap_wr_addr :  // --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
-                                              (pe_req)  ? tap_cal_addr : 
-                                              tap_rd_addr ;
+    assign tap_addr_sel[pADDR_WIDTH-1 : 0] = (pop_tap) ? tap_wr_addr :  tap_cal_addr;// --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
 
     assign tap_wr_addr  = aw_fifo_out - 'h20;
     assign tap_rd_addr  = araddr - 'h20;
@@ -219,7 +217,7 @@ module fir
     wire cal_first,cal_final,ptr_reset;
     reg first_latch;
 
-    assign cal_first = ((tap_ptr == 1 & tap_count != 1) | tap_count == 0);
+    assign cal_first = ((tap_ptr == 1 & tap_count != 1) | tap_count == 0 );
     assign cal_final = tap_ptr == 0 | tap_count == 0;
     assign cal_time  = first_latch | cal_first;
     assign cal_on    = !(!cal_time & !ss_tvalid);
@@ -335,12 +333,12 @@ module fir
     // data ram port--------------------------------------------------
     assign data_WE          = 4'b1111;
     assign data_EN          = ss_tready;
-    assign data_Di          = latch_final; // write latch_final
+    assign data_Di          = (tap_count == 0)? ss_tdata:latch_final; // write latch_final
     assign data_A           = data_addr_sel;
 
     // tap control ---------------------------------------------------
 
-    assign pe_req           = pe_start | ss_tready; 
+    assign pe_req           = pe_start | ss_tready | ss_tvalid; 
 
 //*******************************************************************************************
 // - PE-Port  CALCULATION

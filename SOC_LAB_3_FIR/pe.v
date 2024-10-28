@@ -17,7 +17,7 @@ module pe
     assign result = (acc_on) ? mul_result : mul_result + acc_result;
     always@(posedge clk or negedge rst_n)
     begin
-        if(rst_n)
+        if(!rst_n)
             acc_result <= 0;
         else
             if(cal)
