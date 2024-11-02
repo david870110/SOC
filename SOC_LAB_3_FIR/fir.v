@@ -207,112 +207,92 @@ module fir
     localparam TAPE_NUM_BIT = $clog2(Tape_Num);
     localparam DATA_RAM_NUM = 'd10;
     localparam DATA_NUM_BIT = $clog2(DATA_RAM_NUM);
+    localparam CAL  = 'b0;
+    localparam WAIT = 'b1;
 
     reg [TAPE_NUM_BIT-1 : 0] tap_ptr, tap_count;
     reg [DATA_NUM_BIT-1 : 0] data_ptr;
     reg [DATA_NUM_BIT-1 : 0] data_addr;
-    reg pe_start;
+    reg pe_start_reg, state;
+    wire cal_start; 
 
-    wire cal_on,cal_time; // - first calculate to final calculate.
-    wire cal_first,cal_final,ptr_reset;
-    reg first_latch;
-
-    assign cal_first = ((tap_ptr == 1 & tap_count != 1) | tap_count == 0 );
-    assign cal_final = tap_ptr == 0 | tap_count == 0;
-    assign cal_time  = first_latch | cal_first;
-    assign cal_on    = !(!cal_time & !ss_tvalid);
-    assign ptr_reset = (tap_ptr == tap_count) & tap_count != 0;
-    assign ss_tready = (ss_tvalid & cal_first);
-    
+    assign cal_start    = pe_start_reg | ss_tvalid;
+    assign ss_tready    = (state)                     ? ss_tvalid   : (tap_ptr == 1 & ss_tvalid) | (tap_count == 0 & ss_tvalid);
+    assign tap_cal_addr = (state)                     ? ss_tready   :
+                          (tap_ptr == 1 & !ss_tvalid) ? 0           : tap_ptr;
     always@(posedge axis_clk or negedge axis_rst_n)
     begin
         if(!axis_rst_n)
         begin
-            first_latch <= 1;
-            pe_start <= 0;
-        end
-        else
-        begin
-            if(ss_tready) 
-                pe_start <= 1;
-            if(ap_done)
-                pe_start <= 0;
-            if(cal_first & cal_final)
-                first_latch <= 0;
-            else if(cal_first)
-                first_latch <= 1;
-            else if(cal_final)
-                first_latch <= 0;
-        end
-    end
-
-    always@(posedge axis_clk or negedge axis_rst_n)
-    begin
-        if(!axis_rst_n)
-        begin
+            state       <= CAL;
+            tap_ptr     <= 0;
             tap_count   <= 0;
-            data_addr   <= 0;
         end
         else
         begin
-            if(cal_on & pe_start)
+            if(state == CAL)
             begin
-                if(cal_final)
+                //************************CAL STATE TRANSITION**********************
+                if(tap_ptr == 1 & !ss_tvalid)
+                begin 
+                    state <= WAIT;
+                    tap_ptr <= 0;
+                end
+                //************************CAL STATE**********************
+                else
                 begin
-                    data_addr <= data_addr + 1;
-                    tap_count <= tap_count + 1;
+                    if(cal_start)
+                    begin
+                        if(tap_ptr == tap_count)
+                        begin
+                            tap_count   <= tap_count + 1;
+                            tap_ptr     <= 0;
+                        end
+                        else
+                        begin
+                            tap_ptr <= tap_ptr + 1;
+                        end
+                    end
                 end
             end
-            if(tap_count == 0 & ss_tready) // for idle start
+            if(state == WAIT)
             begin
-                tap_count <= tap_count + 1;
-                data_addr <= data_addr + 1;
-            end
-        end
-    end
-
-    always@(posedge axis_clk or negedge axis_rst_n)
-    begin
-        if(!axis_rst_n)
-        begin
-            tap_ptr     <= 0;
-        end
-        else
-        begin
-            if(cal_on & pe_start)
-            begin
-                if(ptr_reset)
-                    tap_ptr <= 0;
-                else if(tap_ptr == 10)
-                    tap_ptr <= 0;
-                else
-                    tap_ptr <= tap_ptr + 1; 
-            end
-            if(tap_count == 0 & ss_tready) // for idle start
-                tap_ptr <= tap_ptr + 1;
-        end
-    end
-    always@(posedge axis_clk or negedge axis_rst_n)
-    begin
-        if(!axis_rst_n)
-        begin
-            data_ptr    <= 0;
-        end
-        else
-        begin
-            if(cal_on & pe_start)
-            begin
-                if(ptr_reset)
-                    data_ptr <= data_addr;
-                else if(!cal_final)
-                    if(data_ptr > 0)
-                        data_ptr <= data_ptr - 1; 
+                //************************WAIT STATE TRANSITION**********************
+                if(ss_tready)
+                begin
+                    state <= CAL;
+                    if(tap_count == 1)
+                    begin
+                        tap_count <= tap_count + 1;
+                        tap_ptr <= 1;
+                    end
                     else
-                        data_ptr <= 'd9;
+                    begin
+                        tap_ptr <= 2;
+                    end
+
+                end
+                //************************WAIT STATE**********************
+                else
+                begin
+                end
             end
         end
     end
-    assign tap_cal_addr = (cal_on) ? tap_ptr << 2  : (tap_ptr - 1) << 2 ; 
+    always@(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+        begin
+            pe_start_reg    <= 0;
+        end
+        else
+        begin
+            if(ss_tvalid)
+                pe_start_reg    <=  1;
+            else if(ap_done)
+                pe_start_reg    <=  0;
+        end
+    end
 
 //*******************************************************************************************
 // - write sram
@@ -338,7 +318,7 @@ module fir
 
     // tap control ---------------------------------------------------
 
-    assign pe_req           = pe_start | ss_tready | ss_tvalid; 
+    assign pe_req           = cal_start; 
 
 //*******************************************************************************************
 // - PE-Port  CALCULATION
@@ -346,7 +326,7 @@ module fir
     wire [pDATA_WIDTH-1  : 0] mul_a,mul_b,result;
     wire ss_data_sel;
     wire acc_on;
-    assign acc_on       = cal_on & !cal_first;
+    //assign acc_on       = cal_on & !cal_first;
     assign ss_data_sel   = !acc_on;
     assign mul_a        = (ss_data_sel) ? ss_tdata : data_Do;
     assign mul_b        = tap_data;
