@@ -172,10 +172,10 @@ module fir
     wire [pDATA_WIDTH-1 : 0] tap_data;
     wire pe_req;
 
-    assign tap_addr_sel[pADDR_WIDTH-1 : 0] = (pop_tap) ? tap_wr_addr :  tap_cal_addr;// --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
+    assign tap_addr_sel[pADDR_WIDTH-1 : 0] = (pop_tap) ? tap_wr_addr :  tap_rd_addr;// --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
 
     assign tap_wr_addr  = aw_fifo_out - 'h20;
-    assign tap_rd_addr  = araddr - 'h20;
+    assign tap_rd_addr  = tap_cal_addr << 2;
 
 
     // assign port ------------------------------
@@ -227,7 +227,6 @@ module fir
             state       <= CAL;
             tap_ptr     <= 0;
             tap_count   <= 0;
-            data_addr   <= 0;
             data_ptr    <= 0;
         end
         else
@@ -247,7 +246,7 @@ module fir
                     begin
                         if(tap_ptr == tap_count)
                         begin
-                            if(tap_count < 10)
+                            if(tap_count < (Tape_Num-1))
                                 tap_count   <= tap_count + 1;
                             tap_ptr     <= 0;
                         end
@@ -255,6 +254,15 @@ module fir
                         begin
                             tap_ptr <= tap_ptr + 1;
                         end
+                        if(tap_count < 2)
+                            data_ptr <= 0;
+                        else if(data_EN)
+                            data_ptr <= data_addr;
+                        else
+                            if(data_ptr == 0) 
+                                data_ptr <= (DATA_RAM_NUM - 1);
+                            else
+                                data_ptr <= data_ptr - 1; 
                     end
                 end
             end
@@ -267,13 +275,16 @@ module fir
                     if(tap_count == 1)
                     begin
                         tap_count <= tap_count + 1;
-                        tap_ptr <= 1;
+                        tap_ptr <= 0; // --------!!!!!!
                     end
                     else
                     begin
                         tap_ptr <= 2;
                     end
-
+                    if(data_ptr == 0) 
+                        data_ptr <= (DATA_RAM_NUM - 1);
+                    else
+                        data_ptr <= data_ptr - 1;
                 end
                 //************************WAIT STATE**********************
                 else
@@ -296,7 +307,21 @@ module fir
                 pe_start_reg    <=  0;
         end
     end
-
+    always@(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+        begin
+            data_addr    <= 0;
+        end
+        else
+        begin
+            if(data_EN)
+                if(data_addr < (DATA_RAM_NUM - 1))
+                    data_addr <= data_addr + 1;
+                else
+                    data_addr <= 0;
+        end
+    end
 //*******************************************************************************************
 // - write sram
 //*******************************************************************************************
@@ -306,7 +331,8 @@ module fir
     
     always@(posedge axis_clk)
     begin
-        latch_final <= ss_tdata;
+        if(ss_tready)
+            latch_final <= ss_tdata;
     end
     // Set data address and latch data--------------------------------
     assign data_addr_sel    = (data_EN) ? data_wr_addr : data_rd_addr; 
@@ -315,8 +341,10 @@ module fir
 
     // data ram port--------------------------------------------------
     assign data_WE          = 4'b1111;
-    assign data_EN          = ss_tready;
-    assign data_Di          = (tap_count == 0)? ss_tdata:latch_final; // write latch_final
+    assign data_EN          =   (state)          ? 0 :
+                                (tap_count == 0) ? ss_tready : 
+                                (tap_count == 1) ? 0 :  (tap_ptr == 0);
+    assign data_Di          = (tap_count == 0) ? ss_tdata:latch_final; // write latch_final
     assign data_A           = data_addr_sel;
 
     // tap control ---------------------------------------------------
@@ -329,10 +357,6 @@ module fir
     wire [pDATA_WIDTH-1  : 0] mul_a,mul_b,result;
     wire ss_data_sel;
     wire acc_on;
-    //assign acc_on       = cal_on & !cal_first;
-    assign ss_data_sel   = !acc_on;
-    assign mul_a        = (ss_data_sel) ? ss_tdata : data_Do;
-    assign mul_b        = tap_data;
 
     pe
     #(  .pDATA_WIDTH (pDATA_WIDTH)

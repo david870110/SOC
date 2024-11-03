@@ -315,8 +315,10 @@ module fir
 
     // data ram port--------------------------------------------------
     assign data_WE          = 4'b1111;
-    assign data_EN          = ss_tready;
-    assign data_Di          = (tap_count == 0)? ss_tdata:latch_final; // write latch_final
+    assign data_EN          =   (state)          ? 0 :
+                                (tap_count == 0) ? ss_tready : 
+                                (tap_count == 1) ? 0 : (tap_ptr == 0);
+    //assign data_Di          = (tap_count == 0)? ss_tdata:latch_final; // write latch_final
     assign data_A           = data_addr_sel;
 
     // tap control ---------------------------------------------------
