@@ -191,7 +191,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
     input [pDATA_WIDTH-1:0] data;
     input last;
     begin
-        @(posedge axis_clk);
+        repeat(3) @(posedge axis_clk);
         ss_tvalid <= 1;
         ss_tdata  <= data;
         while( !ss_tready) @(posedge axis_clk);
