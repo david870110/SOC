@@ -21,7 +21,7 @@ module bram
         r_A <= A;
     end
 
-    assign Do = {32{!EN}} & RAM[r_A>>2];    // read
+    assign Do = RAM[r_A>>2];    // read
 
     always @(posedge CLK) begin
         if(EN) begin

@@ -356,7 +356,22 @@ module fir
 //*******************************************************************************************
     wire [pDATA_WIDTH-1  : 0] mul_a,mul_b,result;
     wire ss_data_sel;
-    wire acc_on;
+    wire acc_on,cal_on;
+    reg  cal_latch;
+
+    assign mul_a = (ss_tready) ? ss_tdata : data_Do;
+    assign mul_b = tap_Do;
+    assign cal_on = cal_latch | ss_tready;
+    assign acc_on = !ss_tready;
+
+// cal signal maybe can solve the tap_count == 0 special case to reduce gate count  ----JIANG
+    always@(posedge axis_clk)
+    begin
+        if(tap_cal_addr == 0) 
+            cal_latch <= 0;
+        else if(ss_tready) 
+            cal_latch <= 1;
+    end
 
     pe
     #(  .pDATA_WIDTH (pDATA_WIDTH)

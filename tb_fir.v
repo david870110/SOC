@@ -191,7 +191,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
     input [pDATA_WIDTH-1:0] data;
     input last;
     begin
-        repeat($random % 15)@(posedge axis_clk);
+        repeat(15)@(posedge axis_clk);
         ss_tvalid <= 1;
         ss_tdata  <= data;
         while( !ss_tready) @(posedge axis_clk);
@@ -294,7 +294,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
 //*******************************************************************************************
 // - Testing start
 //*******************************************************************************************
-    integer i;
+    integer i,j;
     initial 
     begin
         // reset ------------------------------
@@ -311,6 +311,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
 
         for(i = 0; i<Data_Num; i = i+1)
         begin
+
             if(i == (Data_Num - 1))
                 stream_write(Din_list[i],1);
             else
