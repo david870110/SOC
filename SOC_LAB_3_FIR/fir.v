@@ -179,8 +179,8 @@ module fir
 
 
     // assign port ------------------------------
-    assign tap_WE   = 4'b1111;
-    assign tap_EN   = pop_tap;
+    assign tap_WE   = {4{pop_tap}};
+    assign tap_EN   = 1;
     assign tap_Di   = w_fifo_out;
     assign tap_A    = tap_addr_sel;
     assign tap_data = tap_Do;    
@@ -256,7 +256,7 @@ module fir
                         end
                         if(tap_count < 2)
                             data_ptr <= 0;
-                        else if(data_EN)
+                        else if(data_wr_en)
                             data_ptr <= data_addr;
                         else
                             if(data_ptr == 0) 
@@ -315,7 +315,7 @@ module fir
         end
         else
         begin
-            if(data_EN)
+            if(data_wr_en)
                 if(data_addr < (DATA_RAM_NUM - 1))
                     data_addr <= data_addr + 1;
                 else
@@ -328,6 +328,7 @@ module fir
     wire [pADDR_WIDTH-1 : 0] data_addr_sel;
     wire [pADDR_WIDTH-1 : 0] data_wr_addr, data_rd_addr;
     reg  [pDATA_WIDTH-1  : 0] latch_final;
+    wire data_wr_en;
     
     always@(posedge axis_clk)
     begin
@@ -335,13 +336,14 @@ module fir
             latch_final <= ss_tdata;
     end
     // Set data address and latch data--------------------------------
-    assign data_addr_sel    = (data_EN) ? data_wr_addr : data_rd_addr; 
+    assign data_addr_sel    = (data_wr_en) ? data_wr_addr : data_rd_addr; 
     assign data_wr_addr     = data_addr << 2;
     assign data_rd_addr     = data_ptr  << 2; 
 
     // data ram port--------------------------------------------------
-    assign data_WE          = 4'b1111;
-    assign data_EN          =   (state)          ? 0 :
+    assign data_EN          = 1; //--- !!! data gate.
+    assign data_WE          = {4{data_wr_en}};
+    assign data_wr_en       =   (state)          ? 0 :
                                 (tap_count == 0) ? ss_tready : 
                                 (tap_count == 1) ? 0 :  (tap_ptr == 0);
     assign data_Di          = (tap_count == 0) ? ss_tdata:latch_final; // write latch_final
