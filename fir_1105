@@ -156,15 +156,9 @@ module fir
                 ap_start <= w_fifo_out[0];
             else if(pop_datalength)
                 data_length <= w_fifo_out;
-            else
-            begin
-                if(data_wr_en) 
-                    data_length <= data_length - 1; //1105 ----JIANG
-                if(ss_tvalid) 
-                    ap_start <= 0;
-            end
         end
     end
+
 //*******************************************************************************************
 // - tap_ram control
 //  - tap_ram address : tap_addr_sel
@@ -404,7 +398,6 @@ module fir
 
     assign sm_tvalid = result_latch_full;
     assign sm_tdata  = result_latch;
-    assign sm_tlast  = (data_length == 1);
 
     always@(posedge axis_clk)
     begin
