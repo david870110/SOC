@@ -184,55 +184,10 @@ always @(posedge axis_clk or negedge axis_rst_n)
             configure_write_data(data); 
     join
     endtask
-//*******************************************************************************************
-// - axi-stream write / read task
-//*******************************************************************************************
-    task stream_write;
-    input [pDATA_WIDTH-1:0] data;
-    input last;
-    begin
-        repeat(15)@(posedge axis_clk);
-        ss_tvalid <= 1;
-        ss_tdata  <= data;
-        while( !ss_tready) @(posedge axis_clk);
-            ss_tdata  <= 0;
-    end
-    endtask
 
 
-    reg [9:0] tready_ws; // controlled by testbench zero-wait 
-    reg [9:0]  valid_wc; // local variable to count wait-state
 
-    always @(posedge axis_clk or negedge axis_rst_n) 
-    begin
-        if( !axis_rst_n) 
-        begin
-            sm_tready <= 0;   
-            valid_wc <= tready_ws;
-        end 
-        else 
-        begin
-            if( valid_wc >= 1) 
-            begin
-                sm_tready <= 0;
-                if(tready_ws > 0) 
-                    valid_wc = valid_wc - 1;
-            end 
-            else 
-            begin 
-                sm_tready <= 1; // (tready_ws = 0 | (m_tvalid & m_tready) != 1) , ws = 0 --> wait state is zero , and initial wait state is zero or ready & valid is zero 
-                if( sm_tvalid & sm_tready) 
-                begin
 
-                    if( tready_ws > 0) //issue : will valid_wc = 0 , tws > 0 ,valid_wc overflow?
-                    begin
-                        sm_tready <= 0;
-                        valid_wc <= tready_ws - 1;
-                    end
-                end 
-            end
-        end
-    end
 //*******************************************************************************************
 // - data preprocess
 //*******************************************************************************************
@@ -271,26 +226,45 @@ always @(posedge axis_clk or negedge axis_rst_n)
     end
 
 //*******************************************************************************************
-// - Testing start
+// - axi-stream write / read task
 //*******************************************************************************************
-    bram #(11) tap_ram
-    (
-        .CLK        (axis_clk),
-        .WE         (tap_WE),
-        .EN         (tap_EN),
-        .Di         (tap_Di),
-        .Do         (tap_Do),
-        .A          (tap_A)
-    );
-    bram #(10) data_ram
-    (
-        .CLK        (axis_clk),
-        .WE         (data_WE),
-        .EN         (data_EN),
-        .Di         (data_Di),
-        .Do         (data_Do),
-        .A          (data_A)
-    );
+    task stream_write;
+    input [pDATA_WIDTH-1:0] data;
+    input last;
+    begin
+        @(posedge axis_clk);
+        ss_tvalid <= 1;
+        ss_tdata  <= data;
+        while( !ss_tready) @(posedge axis_clk);
+            ss_tdata  <= 0;
+    end
+    endtask
+
+//*******************************************************************************************
+// - auto check
+//*******************************************************************************************
+    reg [(Data_Num-1) : 0] golden_index;
+    always @(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+            golden_index <= 0;
+        else
+            if(sm_tvalid)
+            begin
+                golden_index <= golden_index + 1;
+                if(golden_list[golden_index] != sm_tdata)
+                begin
+                    $display("ERROR : index[%d] compare error." , golden_index);
+                    $stop;
+                end
+                else if(golden_index == (Data_Num-1))
+                begin
+                    $display("All Correct");
+                    $finish;
+                end
+            end
+    end
+
 //*******************************************************************************************
 // - Testing start
 //*******************************************************************************************
@@ -298,6 +272,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
     initial 
     begin
         // reset ------------------------------
+        sm_tready = 1;
         axis_clk = 0;
         axis_rst_n = 1;
         @(posedge axis_clk);
@@ -318,4 +293,28 @@ always @(posedge axis_clk or negedge axis_rst_n)
                 stream_write(Din_list[i],0);
         end
     end
+
+
+
+//*******************************************************************************************
+// - Testing start
+//*******************************************************************************************
+    bram #(11) tap_ram
+    (
+        .CLK        (axis_clk),
+        .WE         (tap_WE),
+        .EN         (tap_EN),
+        .Di         (tap_Di),
+        .Do         (tap_Do),
+        .A          (tap_A)
+    );
+    bram #(10) data_ram
+    (
+        .CLK        (axis_clk),
+        .WE         (data_WE),
+        .EN         (data_EN),
+        .Di         (data_Di),
+        .Do         (data_Do),
+        .A          (data_A)
+    );
 endmodule

@@ -384,11 +384,30 @@ module fir
         .mul_b  (mul_b),
         .acc_on (acc_on),
         .cal    (cal_on),
+        .last   (data_wr_en),
         .result (result)
     );
 
 //*******************************************************************************************
 // - axi-stream read
 //*******************************************************************************************
+// - data_en to latch result
+    reg[pDATA_WIDTH-1  : 0] result_latch;
+    reg result_latch_full;
 
+
+    assign sm_tvalid = result_latch_full;
+    assign sm_tdata  = result_latch;
+
+    always@(posedge axis_clk)
+    begin
+        if(data_wr_en) 
+        begin
+            result_latch_full <= 1;
+            result_latch <= result;
+        end
+        else if(sm_tready)
+            result_latch_full <= 0;
+    end
+// valid -> ready , but ready can't -> valid.
 endmodule
