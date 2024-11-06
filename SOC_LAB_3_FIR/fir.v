@@ -104,8 +104,6 @@ module fir
         .data_in     (wdata),
         .data_out    (w_fifo_out)
     );
-
-
 //*******************************************************************************************
 // - pop data check address condition
 //  - 0x00          :
@@ -226,9 +224,10 @@ module fir
     assign ss_tready    = (state)                     ? ss_tvalid   : (tap_ptr == 1 & ss_tvalid) | (tap_count == 0 & ss_tvalid);
     assign tap_cal_addr = (state)                     ? ss_tready   :
                           (tap_ptr == 1 & !ss_tvalid) ? 0           : tap_ptr;
-    always@(posedge axis_clk or negedge axis_rst_n)
+                          
+    always@(posedge axis_clk or posedge ap_start)
     begin
-        if(!axis_rst_n)
+        if(ap_start)
         begin
             state       <= CAL;
             tap_ptr     <= 0;
@@ -313,9 +312,9 @@ module fir
                 pe_start_reg    <=  0;
         end
     end
-    always@(posedge axis_clk or negedge axis_rst_n)
+    always@(posedge axis_clk or posedge ap_start)
     begin
-        if(!axis_rst_n)
+        if(ap_start)
         begin
             data_addr    <= 0;
         end
@@ -401,7 +400,6 @@ module fir
     reg[pDATA_WIDTH-1  : 0] result_latch;
     reg result_latch_full;
 
-
     assign sm_tvalid = result_latch_full;
     assign sm_tdata  = result_latch;
     assign sm_tlast  = (data_length == 1);
@@ -415,6 +413,6 @@ module fir
         end
         else if(sm_tready)
             result_latch_full <= 0;
-    end
+    end 
 // valid -> ready , but ready can't -> valid.
 endmodule

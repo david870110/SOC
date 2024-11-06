@@ -100,7 +100,9 @@ module tb_fir;
         .axis_clk(axis_clk),
         .axis_rst_n(axis_rst_n)
     );
-    always #50 axis_clk = ~axis_clk;
+
+    
+    always #5 axis_clk = ~axis_clk;
 
 //*******************************************************************************************
 // - Axi-lite Protocol Control
@@ -153,6 +155,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
             awaddr  <= 0;
     end
     endtask
+
     task configure_write_data;
     input [pDATA_WIDTH-1:0] data;
     begin
@@ -163,6 +166,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
             wdata  <= 0;
     end
     endtask
+
     task configurae_write;
     input [pADDR_WIDTH-1:0] addr;
     input [pDATA_WIDTH-1:0] data;
@@ -243,7 +247,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
 //*******************************************************************************************
 // - auto check
 //*******************************************************************************************
-    reg [(Data_Num-1) : 0] golden_index;
+    reg [9 : 0] golden_index;
     always @(posedge axis_clk or negedge axis_rst_n)
     begin
         if(!axis_rst_n)
@@ -280,9 +284,10 @@ always @(posedge axis_clk or negedge axis_rst_n)
         @(posedge axis_clk);
         axis_rst_n = 1;
         // axi-lite write ------------------------------
+        configurae_write(0,'b111, 0);
+        configurae_write(10,'d600, 0);
         for(i = 0; i<Tape_Num; i = i+1)
-            configurae_write('h20+(i<<2),coef[i],5);
-        configurae_write(0,'b111,4);
+            configurae_write('h20+(i<<2),coef[i],0);
 
         for(i = 0; i<Data_Num; i = i+1)
         begin
@@ -293,9 +298,6 @@ always @(posedge axis_clk or negedge axis_rst_n)
                 stream_write(Din_list[i],0);
         end
     end
-
-
-
 //*******************************************************************************************
 // - Testing start
 //*******************************************************************************************
