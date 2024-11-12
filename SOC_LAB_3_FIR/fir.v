@@ -221,9 +221,9 @@ module fir
     wire cal_start; 
 
     assign cal_start    = pe_start_reg | ss_tvalid;
-    assign ss_tready    = (state)                     ? ss_tvalid   : (tap_ptr == 1 & ss_tvalid) | (tap_count == 0 & ss_tvalid);
+    assign ss_tready    = (state)                     ? ss_tvalid   : (tap_ptr == 1 & ss_tvalid & !result_latch_full) | (tap_count == 0 & ss_tvalid);
     assign tap_cal_addr = (state)                     ? ss_tready   :
-                          (tap_ptr == 1 & !ss_tvalid) ? 0           : tap_ptr;
+                          (tap_ptr == 1 & (!ss_tvalid | result_latch_full)) ? 0           : tap_ptr;
                           
     always@(posedge axis_clk or posedge ap_start)
     begin
@@ -239,7 +239,7 @@ module fir
             if(state == CAL)
             begin
                 //************************CAL STATE TRANSITION**********************
-                if(tap_ptr == 1 & !ss_tvalid)
+                if(tap_ptr == 1 & (!ss_tvalid | result_latch_full))
                 begin 
                     state <= WAIT;
                     tap_ptr <= 0;
@@ -274,7 +274,7 @@ module fir
             if(state == WAIT)
             begin
                 //************************WAIT STATE TRANSITION**********************
-                if(ss_tready)
+                if(ss_tready & !result_latch_full)
                 begin
                     state <= CAL;
                     if(tap_count == 1)
@@ -312,9 +312,9 @@ module fir
                 pe_start_reg    <=  0;
         end
     end
-    always@(posedge axis_clk or posedge ap_start)
+    always@(posedge axis_clk or negedge axis_rst_n)
     begin
-        if(ap_start)
+        if(!axis_rst_n)
         begin
             data_addr    <= 0;
         end

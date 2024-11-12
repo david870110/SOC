@@ -236,7 +236,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
     input [pDATA_WIDTH-1:0] data;
     input last;
     begin
-        @(posedge axis_clk);
+        repeat(10)@(posedge axis_clk);
         ss_tvalid <= 1;
         ss_tdata  <= data;
         while( !ss_tready) @(posedge axis_clk);
@@ -256,7 +256,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
             if(sm_tvalid)
             begin
                 golden_index <= golden_index + 1;
-                if(golden_list[golden_index] != sm_tdata)
+                if(golden_list[golden_index] !== sm_tdata)
                 begin
                     $display("ERROR : index[%d] compare error." , golden_index);
                     $stop;
@@ -269,6 +269,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
             end
     end
 
+    
 //*******************************************************************************************
 // - Testing start
 //*******************************************************************************************
