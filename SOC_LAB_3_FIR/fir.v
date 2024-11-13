@@ -160,6 +160,10 @@ module fir
                     data_length <= data_length - 1; //1105 ----JIANG
                 if(ss_tvalid) 
                     ap_start <= 0;
+                if(data_length == 0 & sm_tready & sm_tvalid)
+                    ap_done <= 1;
+                if(data_length == 0 & sm_tvalid)
+                    ap_idle <= 1;
             end
         end
     end
@@ -220,7 +224,7 @@ module fir
     reg pe_start_reg, state;
     wire cal_start; 
 
-    assign cal_start    = pe_start_reg | ss_tvalid;
+    assign cal_start    = !ap_idle | ss_tvalid;
     assign ss_tready    = (state)                     ? ss_tvalid   : (tap_ptr == 1 & ss_tvalid & !result_latch_full) | (tap_count == 0 & ss_tvalid);
     assign tap_cal_addr = (state)                     ? ss_tready   :
                           (tap_ptr == 1 & (!ss_tvalid | result_latch_full)) ? 0           : tap_ptr;
@@ -298,6 +302,7 @@ module fir
             end
         end
     end
+    /*
     always@(posedge axis_clk or negedge axis_rst_n)
     begin
         if(!axis_rst_n)
@@ -311,10 +316,10 @@ module fir
             else if(ap_done)
                 pe_start_reg    <=  0;
         end
-    end
-    always@(posedge axis_clk or negedge axis_rst_n)
+    end*/
+    always@(posedge axis_clk or posedge ap_idle)
     begin
-        if(!axis_rst_n)
+        if(ap_idle)
         begin
             data_addr    <= 0;
         end
