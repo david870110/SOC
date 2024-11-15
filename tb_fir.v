@@ -189,9 +189,29 @@ always @(posedge axis_clk or negedge axis_rst_n)
     join
     endtask
 
-
-
-
+    task configure_read;
+        input  [31:0] addr;
+        output [31:0] data;
+        begin
+            @(posedge axis_clk);
+            arvalid <= 1;
+            araddr  <= addr;
+            fork
+                begin   
+                    while(!arready) @(posedge axis_clk);
+                    arvalid <= 0;
+                    araddr  <= 0;
+                end
+                begin  
+                    // wait for rvalid, rdata
+                    rready  <= 1;
+                    while(!rvalid) @(posedge axis_clk);
+                    rready  <= 0;
+                    data    <= rdata;
+                end
+            join
+        end
+    endtask
 //*******************************************************************************************
 // - data preprocess
 //*******************************************************************************************
@@ -272,17 +292,23 @@ always @(posedge axis_clk or negedge axis_rst_n)
 //*******************************************************************************************
 // - Testing start
 //*******************************************************************************************
-    wire ap_done;
+    reg[31:0] axi_data_read;
+    reg ap_done;
+
     reg[2:0] cycle_num;
     always @(posedge axis_clk or negedge axis_rst_n)
     begin
         if(!axis_rst_n)
             cycle_num <= 0;
         else
+        begin
+            configure_read(0,axi_data_read);
+            ap_done <= axi_data_read[1];
             if(ap_done == 1)
             begin
                 cycle_num <= cycle_num + 1;
             end
+        end
     end
 
     integer i,j;

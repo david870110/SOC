@@ -316,7 +316,8 @@ module fir
             else if(ap_done)
                 pe_start_reg    <=  0;
         end
-    end*/
+    end
+    */
     always@(posedge axis_clk or posedge ap_idle)
     begin
         if(ap_idle)
