@@ -407,8 +407,8 @@ module fir
     reg result_latch_full;
 
     assign sm_tvalid = result_latch_full;
-    assign sm_tdata  = result_latch;
-    assign sm_tlast  = (data_length == 1);
+    assign sm_tdata  = (tap_count == 0) ? result : result_latch;
+    assign sm_tlast  = (data_length == 0);
 
     always@(posedge axis_clk)
     begin
