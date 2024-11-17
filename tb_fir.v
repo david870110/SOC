@@ -207,7 +207,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
                     rready  <= 1;
                     while(!rvalid) @(posedge axis_clk);
                     rready  <= 0;
-                    data    <= rdata;
+                    axi_data_read  <= rdata;
                 end
             join
         end
@@ -295,13 +295,13 @@ always @(posedge axis_clk or negedge axis_rst_n)
         if(!axis_rst_n)
         begin
             sm_tready <= 0;
-            sm_ws     <= 15;
+            sm_ws     <= ({$random} % 15);
         end
         else
         begin
             if(sm_ws == 0)
             begin
-                sm_ws <= 15;
+                sm_ws <= ({$random} % 15);
                 sm_tready <= ~sm_tready;
             end
             else
@@ -311,14 +311,34 @@ always @(posedge axis_clk or negedge axis_rst_n)
 //*******************************************************************************************
 // - Testing start
 //*******************************************************************************************
+    reg check_ap_done;
+    reg[3:0] cycle_num;
     reg[31:0] axi_data_read;
     wire ap_done;
     assign ap_done = axi_data_read[1];
 
+    always@(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+        begin
+            cycle_num <= 0;
+        end
+        else
+        begin
+            if(ap_done !== 1 & check_ap_done)
+                configure_read('h0,axi_data_read);
+            else
+            begin
+                check_ap_done <= 0;
+                cycle_num <= cycle_num + 1;
+            end
+        end
+    end
     integer i,j;
     initial 
     begin
         // reset ------------------------------
+        check_ap_done = 0;
         sm_tready = 0;
         axis_clk = 0;
         axis_rst_n = 1;
@@ -343,14 +363,19 @@ always @(posedge axis_clk or negedge axis_rst_n)
                 stream_write(Din_list[i],0);
         end
 
+        check_ap_done = 1;
+/*
         configure_read('h0,axi_data_read);
-        $stop;
+
         while(ap_done !== 1) 
         begin
-            @(posedge axis_rst_n);
-            configure_read(0,axi_data_read);
+            configure_read('h0,axi_data_read);
+            $stop;
+            @(posedge axis_clk);
         end
         $stop;
+*/
+        while(cycle_num == 0) @(posedge axis_clk);
         configurae_write(0,'b111, 0);
         configurae_write('h10,'d600, 0);
         for(i = 0; i<Tape_Num; i = i+1)
