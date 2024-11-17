@@ -225,7 +225,7 @@ module fir
     wire cal_start; 
 
     assign cal_start    = !ap_idle | ss_tvalid;
-    assign ss_tready    = (state)                     ? ss_tvalid   : (tap_ptr == 1 & ss_tvalid & !result_latch_full) | (tap_count == 0 & ss_tvalid);
+    assign ss_tready    = (state)                     ? ss_tvalid & !result_latch_full   : (tap_ptr == 1 & ss_tvalid & !result_latch_full) | (tap_count == 0 & ss_tvalid);
     assign tap_cal_addr = (state)                     ? ss_tready   :
                           (tap_ptr == 1 & (!ss_tvalid | result_latch_full)) ? 0           : tap_ptr;
                           

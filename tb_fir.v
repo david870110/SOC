@@ -273,7 +273,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
         if(!axis_rst_n)
             golden_index <= 0;
         else
-            if(sm_tvalid)
+            if(sm_tvalid & sm_tready)
             begin
                 golden_index <= golden_index + 1;
                 if(golden_list[golden_index] !== sm_tdata)
@@ -281,7 +281,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
                     $display("ERROR : index[%d] compare error." , golden_index);
                     $stop;
                 end
-                else if(sm_tlast)
+                if(sm_tlast)
                 begin
                     $display("All Correct");
                     golden_index <= 0;
@@ -289,7 +289,25 @@ always @(posedge axis_clk or negedge axis_rst_n)
                 end
             end
     end
-
+    reg[5:0] sm_ws;
+    always @(posedge axis_clk or negedge axis_rst_n)
+    begin
+        if(!axis_rst_n)
+        begin
+            sm_tready <= 0;
+            sm_ws     <= 15;
+        end
+        else
+        begin
+            if(sm_ws == 0)
+            begin
+                sm_ws <= 15;
+                sm_tready <= ~sm_tready;
+            end
+            else
+                sm_ws <= sm_ws - 1;
+        end
+    end
 //*******************************************************************************************
 // - Testing start
 //*******************************************************************************************
@@ -301,7 +319,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
     initial 
     begin
         // reset ------------------------------
-        sm_tready = 1;
+        sm_tready = 0;
         axis_clk = 0;
         axis_rst_n = 1;
         @(posedge axis_clk);
@@ -326,9 +344,12 @@ always @(posedge axis_clk or negedge axis_rst_n)
         end
 
         configure_read(0,axi_data_read);
-
-           
-
+        while(ap_done !== 1) 
+        begin
+            $display("testing");
+            //configure_read(0,axi_data_read);
+        end
+        $stop;
         configurae_write(0,'b111, 0);
         configurae_write('h10,'d600, 0);
         for(i = 0; i<Tape_Num; i = i+1)
