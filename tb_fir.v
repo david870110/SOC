@@ -343,11 +343,12 @@ always @(posedge axis_clk or negedge axis_rst_n)
                 stream_write(Din_list[i],0);
         end
 
-        configure_read(0,axi_data_read);
+        configure_read('h0,axi_data_read);
+        $stop;
         while(ap_done !== 1) 
         begin
-            $display("testing");
-            //configure_read(0,axi_data_read);
+            @(posedge axis_rst_n);
+            configure_read(0,axi_data_read);
         end
         $stop;
         configurae_write(0,'b111, 0);
