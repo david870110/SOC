@@ -121,6 +121,8 @@ module fir
     reg ap_start,ap_done,ap_idle;
     reg [pDATA_WIDTH-1 : 0] data_length;
     wire pop_cfg,pop_datalength,pop_tap;
+    wire cal_start; 
+    wire data_wr_en;
 
     assign pop_cfg          = pop_axi_fifo & (aw_fifo_out == 12'h0);
     assign pop_datalength   = pop_axi_fifo & (aw_fifo_out >= 'h10) & (aw_fifo_out <= 'h14);
@@ -154,7 +156,7 @@ module fir
                 ap_start <= w_fifo_out[0];
             else if(pop_datalength)
                 data_length <= w_fifo_out;
-            else
+            else if(cal_start)
             begin
                 if(data_wr_en) 
                     data_length <= data_length - 1; //1105 ----JIANG
@@ -180,10 +182,10 @@ module fir
     wire [pDATA_WIDTH-1 : 0] tap_data;
     wire pe_req;
 
-    assign tap_addr_sel[pADDR_WIDTH-1 : 0] = (pop_tap) ? tap_wr_addr :  tap_rd_addr;// --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
+    assign tap_addr_sel = (pop_tap) ? tap_wr_addr :  tap_rd_addr;// --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
 
     assign tap_wr_addr  = aw_fifo_out - 'h20;
-    assign tap_rd_addr  = tap_cal_addr << 2;
+    assign tap_rd_addr  = ((araddr >= 'h20) & (araddr <= 'hFF) & arready) ? (araddr - 'h20) : tap_cal_addr << 2;
 
 
     // assign port ------------------------------
@@ -222,16 +224,16 @@ module fir
     reg [DATA_NUM_BIT-1 : 0] data_ptr;
     reg [DATA_NUM_BIT-1 : 0] data_addr;
     reg pe_start_reg, state;
-    wire cal_start; 
+    reg result_latch_full;
 
     assign cal_start    = !ap_idle | ss_tready;
     assign ss_tready    = (state)                     ? ss_tvalid & !result_latch_full   : (tap_ptr == 1 & ss_tvalid & !result_latch_full) | (tap_count == 0 & ss_tvalid & pe_start_reg);
     assign tap_cal_addr = (state)                     ? ss_tready   :
                           (tap_ptr == 1 & (!ss_tvalid | result_latch_full)) ? 0           : tap_ptr;
                           
-    always@(posedge axis_clk or posedge ap_start)
+    always@(posedge axis_clk or negedge axis_rst_n)
     begin
-        if(ap_start)
+        if(!axis_rst_n | ap_done)
         begin
             state       <= CAL;
             tap_ptr     <= 0;
@@ -304,18 +306,25 @@ module fir
     end
 
 
-    always@(posedge axis_clk)
+    always@(posedge axis_clk or negedge axis_rst_n)
     begin
-        if(ap_start)
-            pe_start_reg    <=  1;
-        else if(ap_done)
-            pe_start_reg    <=  0;
+        if(!axis_rst_n)
+        begin
+            pe_start_reg    <= 0;
+        end
+        else
+        begin
+            if(ap_start)
+                pe_start_reg    <=  1;
+            else if(ap_done)
+                pe_start_reg    <=  0;
+        end
     end
 
 
-    always@(posedge axis_clk or posedge ap_idle)
+    always@(posedge axis_clk or negedge axis_rst_n)
     begin
-        if(ap_idle)
+        if(!axis_rst_n | ap_idle)
         begin
             data_addr    <= 0;
         end
@@ -334,7 +343,7 @@ module fir
     wire [pADDR_WIDTH-1 : 0] data_addr_sel;
     wire [pADDR_WIDTH-1 : 0] data_wr_addr, data_rd_addr;
     reg  [pDATA_WIDTH-1  : 0] latch_final;
-    wire data_wr_en;
+
     
     always@(posedge axis_clk)
     begin
@@ -399,21 +408,30 @@ module fir
 //*******************************************************************************************
 // - data_en to latch result
     reg[pDATA_WIDTH-1  : 0] result_latch;
-    reg result_latch_full;
+
 
     assign sm_tvalid = result_latch_full;
     assign sm_tdata  = (tap_count == 0) ? result : result_latch;
-    assign sm_tlast  = (data_length == 1);
+    assign sm_tlast  = (data_length == 0);
 
-    always@(posedge axis_clk)
+    always@(posedge axis_clk or negedge axis_rst_n)
     begin
-        if(data_wr_en) 
+        if(!axis_rst_n)
         begin
-            result_latch_full <= 1;
-            result_latch <= result;
-        end
-        else if(sm_tready)
             result_latch_full <= 0;
+            result_latch<=0;
+        end
+        else
+        begin
+            if(data_wr_en) 
+            begin
+                result_latch_full <= 1;
+                result_latch <= result;
+            end
+            else if(sm_tready)
+                result_latch_full <= 0;
+        end
+
     end 
 // valid -> ready , but ready can't -> valid.
 endmodule
