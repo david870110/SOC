@@ -201,15 +201,19 @@ module fir
 //  - rvalid    : when tap_ram is select rd(not cal and write request), data is valid.
 //  - arready   : when arready is asserted , TB will reset arvalid and araddr in next cycle. 
 //*******************************************************************************************
-    assign rvalid   = !pe_req & !pop_tap;
-    assign arready  = arvalid & rvalid;
+    reg arvalid_d1;
+    assign arready   = !pe_req & !pop_tap;
+    assign rvalid = ((araddr >= 'h20) & (araddr <= 'hFF)) ? (arvalid_d1 & arready) : (arvalid & arready);
 // rready in rvalid out . ready sample valid and set valid down
     assign rdata = (araddr == 12'h0)                        ? {29'b0,ap_start,ap_done,ap_idle}   : 
                    ((araddr >= 'h10) & (araddr <= 'h14))    ?   data_length : 
                    ((araddr >= 'h20) & (araddr <= 'hFF))    ?   tap_data : 32'hFFFFFFFF;
 
 
-
+    always@(posedge axis_clk)
+    begin
+        arvalid_d1 <= arvalid;
+    end
 
 //*******************************************************************************************
 // - PE Address Generate

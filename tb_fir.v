@@ -278,6 +278,7 @@ module fir_tb
             if( (rdata & mask) != (exp_data & mask)) begin
                 $display("ERROR: exp = %d, rdata = %d", exp_data, rdata);
                 error_coef <= 1;
+                $stop;
             end else begin
                 $display("OK: exp = %d, rdata = %d", exp_data, rdata);
             end
