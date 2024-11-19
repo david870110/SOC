@@ -250,7 +250,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
     end
 
 //*******************************************************************************************
-// - axi-stream write / read task
+// - axi-stream write / read task 
 //*******************************************************************************************
     task stream_write;
     input [pDATA_WIDTH-1:0] data;
@@ -295,7 +295,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
         if(!axis_rst_n)
         begin
             sm_tready <= 0;
-            sm_ws     <= ({$random} % 15);
+            sm_ws     <= ({$random} % 15); 
         end
         else
         begin
@@ -355,7 +355,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
             configurae_write('h20+(i<<2),coef[i],0);
 
         for(i = 0; i<Data_Num; i = i+1)
-        begin
+        begin 
 
             if(i == (Data_Num - 1))
                 stream_write(Din_list[i],1);
@@ -383,7 +383,6 @@ always @(posedge axis_clk or negedge axis_rst_n)
 
         for(i = 0; i<Data_Num; i = i+1)
         begin
-
             if(i == (Data_Num - 1))
                 stream_write(Din_list[i],1);
             else

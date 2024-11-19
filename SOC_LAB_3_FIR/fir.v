@@ -158,11 +158,11 @@ module fir
             begin
                 if(data_wr_en) 
                     data_length <= data_length - 1; //1105 ----JIANG
-                if(ss_tvalid) 
+                if(ss_tready) 
                     ap_start <= 0;
-                if(data_length == 0 & sm_tready & sm_tvalid)
+                if(data_length == 0 & sm_tready)
                     ap_done <= 1;
-                if(data_length == 0 & sm_tvalid)
+                if(data_length == 0)
                     ap_idle <= 1;
             end
         end
@@ -224,8 +224,8 @@ module fir
     reg pe_start_reg, state;
     wire cal_start; 
 
-    assign cal_start    = !ap_idle | ss_tvalid;
-    assign ss_tready    = (state)                     ? ss_tvalid & !result_latch_full   : (tap_ptr == 1 & ss_tvalid & !result_latch_full) | (tap_count == 0 & ss_tvalid);
+    assign cal_start    = !ap_idle | ss_tready;
+    assign ss_tready    = (state)                     ? ss_tvalid & !result_latch_full   : (tap_ptr == 1 & ss_tvalid & !result_latch_full) | (tap_count == 0 & ss_tvalid & pe_start_reg);
     assign tap_cal_addr = (state)                     ? ss_tready   :
                           (tap_ptr == 1 & (!ss_tvalid | result_latch_full)) ? 0           : tap_ptr;
                           
@@ -302,22 +302,17 @@ module fir
             end
         end
     end
-    /*
-    always@(posedge axis_clk or negedge axis_rst_n)
+
+
+    always@(posedge axis_clk)
     begin
-        if(!axis_rst_n)
-        begin
-            pe_start_reg    <= 0;
-        end
-        else
-        begin
-            if(ss_tvalid)
-                pe_start_reg    <=  1;
-            else if(ap_done)
-                pe_start_reg    <=  0;
-        end
+        if(ap_start)
+            pe_start_reg    <=  1;
+        else if(ap_done)
+            pe_start_reg    <=  0;
     end
-    */
+
+
     always@(posedge axis_clk or posedge ap_idle)
     begin
         if(ap_idle)
@@ -408,7 +403,7 @@ module fir
 
     assign sm_tvalid = result_latch_full;
     assign sm_tdata  = (tap_count == 0) ? result : result_latch;
-    assign sm_tlast  = (data_length == 0);
+    assign sm_tlast  = (data_length == 1);
 
     always@(posedge axis_clk)
     begin
