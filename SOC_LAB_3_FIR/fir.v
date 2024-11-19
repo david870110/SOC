@@ -295,7 +295,7 @@ module fir
                     else
                         data_ptr <= data_ptr - 1;
                 end
-                //************************WAIT STATE**********************
+                //************************WAIT STATE*********************
                 else
                 begin
                 end
