@@ -124,7 +124,7 @@ module fir
     wire cal_start; 
     wire data_wr_en;
 
-    assign pop_cfg          = pop_axi_fifo & (aw_fifo_out == 12'h0);
+    assign pop_cfg          = pop_axi_fifo & (aw_fifo_out == 12'h0) & ap_idle;
     assign pop_datalength   = pop_axi_fifo & (aw_fifo_out >= 'h10) & (aw_fifo_out <= 'h14);
     assign pop_tap          = pop_axi_fifo & (aw_fifo_out >= 'h20) & (aw_fifo_out <= 'hFF);
 
@@ -156,7 +156,7 @@ module fir
                 ap_start <= w_fifo_out[0];
             else if(pop_datalength)
                 data_length <= w_fifo_out;
-            else if(cal_start)
+            if(cal_start)
             begin
                 if(data_wr_en) 
                     data_length <= data_length - 1; //1105 ----JIANG
@@ -205,7 +205,7 @@ module fir
     assign arready   = !pe_req & !pop_tap;
     assign rvalid = ((araddr >= 'h20) & (araddr <= 'hFF)) ? (arvalid_d1 & arready) : (arvalid & arready);
 // rready in rvalid out . ready sample valid and set valid down
-    assign rdata = (araddr == 12'h0)                        ? {29'b0,ap_start,ap_done,ap_idle}   : 
+    assign rdata = (araddr == 12'h0)                        ? {29'b0,ap_done,ap_idle,ap_start}   : 
                    ((araddr >= 'h10) & (araddr <= 'h14))    ?   data_length : 
                    ((araddr >= 'h20) & (araddr <= 'hFF))    ?   tap_data : 32'hFFFFFFFF;
 
@@ -262,7 +262,13 @@ module fir
                         if(tap_ptr == tap_count)
                         begin
                             if(tap_count < (Tape_Num-1))
-                                tap_count   <= tap_count + 1;
+                                if(tap_count == 0)
+                                    if(ss_tready)
+                                        tap_count <= tap_count + 1;
+                                    else
+                                        tap_count <= 0;
+                                else
+                                    tap_count   <= tap_count + 1;
                             tap_ptr     <= 0;
                         end
                         else

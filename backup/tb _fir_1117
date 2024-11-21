@@ -375,6 +375,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
         end
         $stop;
 */
+/*
         while(cycle_num == 0) @(posedge axis_clk);
         configurae_write(0,'b111, 0);
         configurae_write('h10,'d600, 0);
@@ -389,7 +390,7 @@ always @(posedge axis_clk or negedge axis_rst_n)
             else
                 stream_write(Din_list[i],0);
         end
-
+*/
     end
 //*******************************************************************************************
 // - Testing start
