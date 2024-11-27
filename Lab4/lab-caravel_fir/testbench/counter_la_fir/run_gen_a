@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# 停止腳本如果發生錯誤
+set -e
+
+# 變量設置
+SOURCE_C_FILES=(fir.c fir_control.c)
+
+# 1. 生成中間的組合語言文件
+for src in "${SOURCE_C_FILES[@]}"; do
+  asm_file="${src%.c}.s"
+  riscv32-unknown-elf-gcc -S -march=rv32i -mabi=ilp32 -I../../firmware -D__vexriscv__ -o "$asm_file" "$src"
+  echo "生成組合語言文件: $asm_file"
+done
+

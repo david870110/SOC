@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# 停止腳本如果發生錯誤
+set -e
+
+# 變量設置
+ASSEMBLY_FILES=(fir.s fir_control.s)
+OBJECT_FILES=()
+OUTPUT_ELF="counter_la_fir.elf"
+LINKER_SCRIPT="../../firmware/sections.lds"
+CRT0="../../firmware/crt0_vex.S"
+ISR="../../firmware/isr.c"
+
+# 1. 組裝修改後的組合語言文件為目標文件 (.o)
+for asm in "${ASSEMBLY_FILES[@]}"; do
+  obj_file="${asm%.s}.o"
+  riscv32-unknown-elf-as -march=rv32i -o "$obj_file" "$asm"
+  OBJECT_FILES+=("$obj_file")
+  echo "組裝組合語言文件: $obj_file"
+done
+
+# 2. 重新鏈接生成 .elf 文件
+riscv32-unknown-elf-gcc -Wl,--no-warn-rwx-segments -g \
+    -Xlinker -Map=output.map \
+    -I../../firmware \
+    -march=rv32i -mabi=ilp32 -D__vexriscv__ \
+    -Wl,-Bstatic,-T,"$LINKER_SCRIPT",--strip-discarded \
+    -ffreestanding -nostartfiles -o "$OUTPUT_ELF" "$CRT0" "$ISR" "${OBJECT_FILES[@]}"
+
+echo "已成功生成 .elf 文件: $OUTPUT_ELF"
+
+# 3. 將 .elf 文件轉換為 .hex 文件，用於模擬
+riscv32-unknown-elf-objcopy -O verilog "$OUTPUT_ELF" counter_la_fir.hex
+sed -ie 's/@10/@00/g' counter_la_fir.hex
+
+echo "已生成 .hex 文件: counter_la_fir.hex"
+
+# 4. 使用新生成的 .hex 文件進行模擬
+iverilog -Ttyp -DFUNCTIONAL -DSIM -DUNIT_DELAY=#1 \
+    -f./include.rtl.list -o counter_la_fir.vvp counter_la_fir_tb.v
+vvp counter_la_fir.vvp
+
+rm -f counter_la_fir.vvp counter_la_fir.elf counter_la_fir.hex
+
+echo "模擬已完成"
+
