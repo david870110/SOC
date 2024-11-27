@@ -35,14 +35,14 @@ module user_project_wrapper #(
     parameter BITS = 32
 ) (
 `ifdef USE_POWER_PINS
-    inout vdda1,    // User area 1 3.3V supply
-    inout vdda2,    // User area 2 3.3V supply
-    inout vssa1,    // User area 1 analog ground
-    inout vssa2,    // User area 2 analog ground
-    inout vccd1,    // User area 1 1.8V supply
-    inout vccd2,    // User area 2 1.8v supply
-    inout vssd1,    // User area 1 digital ground
-    inout vssd2,    // User area 2 digital ground
+    inout vdda1,	// User area 1 3.3V supply
+    inout vdda2,	// User area 2 3.3V supply
+    inout vssa1,	// User area 1 analog ground
+    inout vssa2,	// User area 2 analog ground
+    inout vccd1,	// User area 1 1.8V supply
+    inout vccd2,	// User area 2 1.8v supply
+    inout vssd1,	// User area 1 digital ground
+    inout vssd2,	// User area 2 digital ground
 `endif
 
     // Wishbone Slave ports (WB MI A)
@@ -68,6 +68,9 @@ module user_project_wrapper #(
     output [`MPRJ_IO_PADS-1:0] io_oeb,
 
     // Analog (direct connection to GPIO pad---use with caution)
+    // Note that analog I/O is not available on the 7 lowest-numbered
+    // GPIO pads, and so the analog_io indexing is offset from the
+    // GPIO indexing by 7 (also upper 2 GPIOs do not have analog_io).
     inout [`MPRJ_IO_PADS-10:0] analog_io,
 
     // Independent clock (on independent integer divider)
@@ -140,18 +143,18 @@ module user_project_wrapper #(
 //====================== WB Address Decode =========================
     // User project memory starting:  0x3800_0000
     // User project FIR base address: 0x3000_0000 
-    assign usr_decode = (wbs_adr_i[31:16] == 16'h3800); // Send to user project memory
-    assign fir_decode = (wbs_adr_i[31:16] == 16'h3000); // Send to FIR
-    assign fir_strin  = (fir_decode && wbs_adr_i[15:0] == 16'h0080);
-    assign fir_strout = (fir_decode && wbs_adr_i[15:0] == 16'h0084);
+    assign usr_decode = (wbs_adr_i[31:16] == 16'h3800)? 1'b1 : 1'b0; // Send to user project memory
+    assign fir_decode = (wbs_adr_i[31:16] == 16'h3000)? 1'b1 : 1'b0; // Send to FIR
+    assign fir_strin  = (fir_decode && wbs_adr_i[15:0] == 16'h0080)? 1'b1 : 1'b0;
+    assign fir_strout = (fir_decode && wbs_adr_i[15:0] == 16'h0084)? 1'b1 : 1'b0;
     
     assign wbs_ack_o = tmp_wb_ack; // ready
     assign wbs_dat_o = tmp_wb_dat;
     
 //------------------------- WB-to-AXI ------------------------------
     // AXI WRITE 
-    assign awvalid   = fir_decode && wbs_cyc_i && wbs_stb_i && wbs_we_i; // address valid when processing(CYC)
-    assign wvalid    = fir_decode && wbs_cyc_i && wbs_stb_i && wbs_we_i; // data valid when strobe
+    assign awvalid   = fir_decode && (!fir_strin) && (!fir_strout) && wbs_cyc_i && wbs_stb_i && wbs_we_i; // address valid when processing(CYC)
+    assign wvalid    = fir_decode && (!fir_strin) && (!fir_strout) && wbs_cyc_i && wbs_stb_i && wbs_we_i; // data valid when strobe
     assign awaddr    = wbs_adr_i; 
     assign wdata     = wbs_dat_i;
     assign axi_w_ack = wready && wvalid;
@@ -177,25 +180,29 @@ module user_project_wrapper #(
     assign axis_rst_n = ~wb_rst_i; // WB: active high AXI: active low
     
     always @* begin
-        tmp_wb_ack = 1'b0;
-        tmp_wb_dat = 32'd0;
         if (fir_decode) begin
             if (wbs_we_i) begin // WRITE
-                if (fir_strin) begin // WRITE X (stream)
-                    tmp_wb_ack = axi_s_ack;
-                end else begin    // TAP, data_length, ap_ctrl
-                    tmp_wb_ack = axi_w_ack;
+                if (wbs_adr_i[7:0] == 8'h80) begin // WRITE X (stream)
+                    tmp_wb_ack = axi_s_ack; // ss
+                    tmp_wb_dat = 32'dx;
                 end
-            end else begin // READ
-                if (fir_strout) begin // READ Y (stream)
-                    tmp_wb_ack = axi_m_ack;
-                    tmp_wb_dat = axi_m_dat;
-                end else begin    // TAP, ap_ctrl
-                    tmp_wb_ack = axi_r_ack;
+                else begin    // 0x40:TAP 0x10:data_length 0x00:ap_ctrl
+                    tmp_wb_ack = axi_w_ack; // AXI 
+                    tmp_wb_dat = 32'dx;
+                end
+            end
+            else begin          // READ
+                if (wbs_adr_i[7:0] == 8'h84) begin // READ Y (stream)
+                    tmp_wb_ack = axi_m_ack; // sm_tvalid
+                    tmp_wb_dat = axi_m_dat; // sm_tdata
+                end
+                else begin    // 0x40:TAP 0x00:ap_ctrl both using AXI
+                    tmp_wb_ack = axi_r_ack; 
                     tmp_wb_dat = axi_r_dat;
                 end
             end
-        end else begin
+        end
+        else begin
             tmp_wb_ack = usr_ack_o;
             tmp_wb_dat = usr_dat_o;
         end
@@ -207,8 +214,8 @@ module user_project_wrapper #(
 
     user_proj_exmem_fir mprj (
     `ifdef USE_POWER_PINS
-        .vccd1(vccd1),    // User area 1 1.8V power
-        .vssd1(vssd1),    // User area 1 digital ground
+	    .vccd1(vccd1),	// User area 1 1.8V power
+        .vssd1(vssd1),	// User area 1 digital ground
     `endif
 
         .wb_clk_i(wb_clk_i),
@@ -307,7 +314,6 @@ module user_project_wrapper #(
     );
 
 
-endmodule    // user_project_wrapper
+endmodule	// user_project_wrapper
 
 `default_nettype wire
-
