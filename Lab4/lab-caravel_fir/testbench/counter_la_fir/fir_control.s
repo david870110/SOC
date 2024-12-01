@@ -5,204 +5,97 @@
 	.attribute stack_align, 16
 	.text
 	.align	2
-	.type	flush_cpu_icache, @function
-flush_cpu_icache:
-	addi	sp,sp,-16
-	sw	s0,12(sp)
-	addi	s0,sp,16
-	nop
-	lw	s0,12(sp)
-	addi	sp,sp,16
-	jr	ra
-	.size	flush_cpu_icache, .-flush_cpu_icache
-	.align	2
-	.type	flush_cpu_dcache, @function
-flush_cpu_dcache:
-	addi	sp,sp,-16
-	sw	s0,12(sp)
-	addi	s0,sp,16
-	nop
-	lw	s0,12(sp)
-	addi	sp,sp,16
-	jr	ra
-	.size	flush_cpu_dcache, .-flush_cpu_dcache
-	.align	2
 	.globl	putchar
 	.type	putchar, @function
 putchar:
-	addi	sp,sp,-32
-	sw	ra,28(sp)
-	sw	s0,24(sp)
-	addi	s0,sp,32
-	mv	a5,a0
-	sb	a5,-17(s0)
-	lbu	a4,-17(s0)
 	li	a5,10
-	bne	a4,a5,.L6
-	li	a0,13
-	call	putchar
-.L6:
-	nop
-.L5:
-	li	a5,-268410880
-	addi	a5,a5,-2044
-	lw	a4,0(a5)
-	li	a5,1
-	beq	a4,a5,.L5
-	li	a5,-268410880
-	addi	a5,a5,-2048
-	lbu	a4,-17(s0)
-	sw	a4,0(a5)
-	nop
-	lw	ra,28(sp)
-	lw	s0,24(sp)
-	addi	sp,sp,32
-	jr	ra
+	beq	a0,a5,.L8
+.L2:
+	li	a4,-268410880
+	li	a3,1
+.L4:
+	lw	a5,-2044(a4)
+	beq	a5,a3,.L4
+	sw	a0,-2048(a4)
+	ret
+.L8:
+	li	a4,-268410880
+	li	a3,1
+.L3:
+	lw	a5,-2044(a4)
+	beq	a5,a3,.L3
+	li	a5,13
+	sw	a5,-2048(a4)
+	j	.L2
 	.size	putchar, .-putchar
 	.align	2
 	.globl	print
 	.type	print, @function
 print:
-	addi	sp,sp,-32
-	sw	ra,28(sp)
-	sw	s0,24(sp)
-	addi	s0,sp,32
-	sw	a0,-20(s0)
-	j	.L8
+	lbu	a2,0(a0)
+	beq	a2,zero,.L9
+	li	a1,10
+	li	a4,-268410880
+	li	a3,1
+	li	a6,13
+.L14:
+	addi	a0,a0,1
+	beq	a2,a1,.L12
+.L13:
+	lw	a5,-2044(a4)
+	beq	a5,a3,.L13
+	sw	a2,-2048(a4)
+	lbu	a2,0(a0)
+	bne	a2,zero,.L14
 .L9:
-	lw	a5,-20(s0)
-	addi	a4,a5,1
-	sw	a4,-20(s0)
-	lbu	a5,0(a5)
-	mv	a0,a5
-	call	putchar
-.L8:
-	lw	a5,-20(s0)
-	lbu	a5,0(a5)
-	bne	a5,zero,.L9
-	nop
-	nop
-	lw	ra,28(sp)
-	lw	s0,24(sp)
-	addi	sp,sp,32
-	jr	ra
+	ret
+.L12:
+	lw	a5,-2044(a4)
+	beq	a5,a3,.L12
+	sw	a6,-2048(a4)
+	j	.L13
 	.size	print, .-print
 	.section	.mprjram,"ax",@progbits
 	.align	2
 	.globl	main
 	.type	main, @function
 main:
-	addi	sp,sp,-32
-	sw	ra,28(sp)
-	sw	s0,24(sp)
-	addi	s0,sp,32
-	li	a5,637534208
-	addi	a5,a5,160
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,156
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,152
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,148
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,144
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,140
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,136
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,132
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,128
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,124
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,120
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,116
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,112
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,108
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,104
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	addi	a5,a5,100
-	li	a4,8192
-	addi	a4,a4,-2039
-	sw	a4,0(a5)
-	li	a5,637534208
-	li	a4,1
-	sw	a4,0(a5)
-	nop
-.L11:
-	li	a5,637534208
-	lw	a4,0(a5)
+	addi	sp,sp,-16
+	li	a5,8192
+	li	a4,637534208
+	sw	ra,12(sp)
+	addi	a5,a5,-2039
+	sw	a5,160(a4)
+	sw	a5,156(a4)
+	sw	a5,152(a4)
+	sw	a5,148(a4)
+	sw	a5,144(a4)
+	sw	a5,140(a4)
+	sw	a5,136(a4)
+	sw	a5,132(a4)
+	sw	a5,128(a4)
+	sw	a5,124(a4)
+	sw	a5,120(a4)
+	sw	a5,116(a4)
+	sw	a5,112(a4)
+	sw	a5,108(a4)
+	sw	a5,104(a4)
+	sw	a5,100(a4)
 	li	a5,1
-	beq	a4,a5,.L11
+	sw	a5,0(a4)
+	li	a3,637534208
+	li	a4,1
+.L22:
+	lw	a5,0(a3)
+	beq	a5,a4,.L22
 	call	initfir
-	sw	zero,-20(s0)
-	j	.L12
-.L13:
 	call	initfir
 	call	fir_excute
-	lw	a5,-20(s0)
-	addi	a5,a5,1
-	sw	a5,-20(s0)
-.L12:
-	lw	a4,-20(s0)
-	li	a5,2
-	ble	a4,a5,.L13
-	nop
-	nop
-	lw	ra,28(sp)
-	lw	s0,24(sp)
-	addi	sp,sp,32
-	jr	ra
+	call	initfir
+	call	fir_excute
+	call	initfir
+	lw	ra,12(sp)
+	addi	sp,sp,16
+	tail	fir_excute
 	.size	main, .-main
 	.ident	"GCC: (g1ea978e3066) 12.1.0"

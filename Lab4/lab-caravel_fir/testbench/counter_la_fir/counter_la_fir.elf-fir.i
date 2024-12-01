@@ -1,14 +1,14 @@
 # 0 "fir.c"
-# 1 "/home/ubuntu/Desktop/2024_Fall_NTU_AAHLS/course-lab_4/lab-caravel_fir/testbench/counter_la_fir//"
+# 1 "/home/ubuntu/Desktop/SOC/Lab4/lab-caravel_fir/testbench/counter_la_fir//"
 # 0 "<built-in>"
 # 0 "<command-line>"
 # 1 "fir.c"
 # 1 "fir.h" 1
-# 20 "fir.h"
+# 19 "fir.h"
 int taps[11] = {0,-10,-9,23,56,63,56,23,-9,-10,0};
 
-
 int outputsignal[64];
+int temp;
 # 2 "fir.c" 2
 # 1 "/opt/riscv/lib/gcc/riscv32-unknown-elf/12.1.0/include/stdint.h" 1 3 4
 # 11 "/opt/riscv/lib/gcc/riscv32-unknown-elf/12.1.0/include/stdint.h" 3 4
@@ -83,45 +83,53 @@ typedef long long unsigned int uintmax_t;
 void __attribute__ ( ( section ( ".mprjram" ) ) ) initfir() {
 
 
- (*(volatile uint32_t*)0x30000010) = 64;
+ (*(volatile uint32_t*)(0x30000010)) = 64;
 
 
  for (uint32_t i = 0; i < 11; i++) {
-  (*(volatile uint32_t*)(0x30000040 + 4*i)) = taps[i];
-
+  (*(volatile uint32_t*)((0x30000040 + 4*i))) = taps[i];
  }
+
 }
 
-int* __attribute__ ( ( section ( ".mprjram" ) ) ) fir_excute() {
+void __attribute__ ( ( section ( ".mprjram" ) ) ) fir_excute() {
+
+ (*(volatile uint32_t*)(0x2600000C)) = 0x00A50000;
+
+
+ (*(volatile uint32_t*)(0x30000000)) = 1;
+
+ uint8_t register t = 0;
+ uint8_t register t_save = 0;
+
+ (*(volatile uint32_t*)(0x30000080)) = t;
+
+ t = t + 1;
 
 
 
- (*(volatile uint32_t*)0x2600000c) = 0x00A50000;
-
-
-
-
-
-        (*(volatile uint32_t*)0x30000000) = 1;
-
-        uint8_t register t = 0;
-
-
-        while (t < 64) {
-          (*(volatile uint32_t*)0x30000080) = t;
-
-
-                outputsignal[t] = (*(volatile uint32_t*)0x30000084);
-                t = t + 1;
-        }
+ (*(volatile uint32_t*)(0x30000080)) = t;
 
 
 
 
-        (*(volatile uint32_t*)0x30000000);
 
 
-        (*(volatile uint32_t*)0x2600000C) = outputsignal[64 -1] << 24 | 0x005A0000;
 
- return outputsignal;
+ while (t < 64 -1) {
+  temp = (*(volatile uint32_t*)(0x30000084));
+  (*(volatile uint32_t*)(0x30000080)) = t+1;
+  outputsignal[t_save] = temp;
+  t = t + 1;
+  t_save = t_save + 1;
+    }
+
+ outputsignal[64 -2] = (*(volatile uint32_t*)(0x30000084));
+ outputsignal[64 -1] = (*(volatile uint32_t*)(0x30000084));
+
+
+
+
+ (*(volatile uint32_t*)(0x30000000));
+ (*(volatile uint32_t*)(0x2600000C)) = outputsignal[64 -1] << 24 | 0x005A0000;
 }

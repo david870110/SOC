@@ -1,5 +1,5 @@
 # 0 "../../firmware/isr.c"
-# 1 "/home/ubuntu/Desktop/2024_Fall_NTU_AAHLS/course-lab_4/lab-caravel_fir/testbench/counter_la_fir//"
+# 1 "/home/ubuntu/Desktop/SOC/Lab4/lab-caravel_fir/testbench/counter_la_fir//"
 # 0 "<built-in>"
 # 0 "<command-line>"
 # 1 "../../firmware/isr.c"
