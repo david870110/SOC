@@ -19,7 +19,7 @@
 int taps[11] = {0,-10,-9,23,56,63,56,23,-9,-10,0};
 
 int outputsignal[N];
-int temp;
+int temp , temp_pre;
 
 #define adr_ofst(target, offset) (target + offset)
 #define wb_write(target, data)   (*(volatile uint32_t*)(target)) = data // wishbone write

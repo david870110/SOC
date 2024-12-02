@@ -44,11 +44,12 @@ fir_excute:
 	li	a3,805306368
 	li	a1,64
 .L6:
-	lw	a2,132(a3)
 	sw	a5,128(a3)
 	addi	a5,a5,1
-	sw	a2,0(a4)
-	addi	a4,a4,4
+	lw	a2,132(a3)
+	#sw	a2,0(a4)
+	#addi	a4,a4,4
+	
 	bne	a5,a1,.L6
 	lw	a4,132(a3)
 	lui	a2,%hi(temp)
@@ -62,6 +63,7 @@ fir_excute:
 	sw	a5,12(a4)
 	ret
 	.size	fir_excute, .-fir_excute
+	.globl	temp_pre
 	.globl	temp
 	.globl	outputsignal
 	.globl	taps
@@ -91,6 +93,10 @@ outputsignal:
 	.zero	256
 	.section	.sbss,"aw",@nobits
 	.align	2
+	.type	temp_pre, @object
+	.size	temp_pre, 4
+temp_pre:
+	.zero	4
 	.type	temp, @object
 	.size	temp, 4
 temp:

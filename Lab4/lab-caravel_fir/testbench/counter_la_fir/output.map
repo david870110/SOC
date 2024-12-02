@@ -22,10 +22,10 @@ Linker script and memory map
  *crt0*(.text)
  *(.text.isr)
                 0x0000000010000000                _etext = .
- .text          0x0000000010000000      0x148 /tmp/cchY3199.o
+ .text          0x0000000010000000      0x148 /tmp/ccNdQuJU.o
                 0x0000000010000000                _start
                 0x0000000010000020                trap_entry
- .text          0x0000000010000148       0xb4 /tmp/ccq5kcM7.o
+ .text          0x0000000010000148       0xb4 /tmp/ccnDZGrT.o
                 0x00000000100001a8                isr
  .text          0x00000000100001fc        0x0 fir.o
  .text          0x00000000100001fc       0x84 fir_control.o
@@ -33,7 +33,7 @@ Linker script and memory map
                 0x0000000010000238                print
 
 .rela.dyn       0x0000000010000280        0x0
- .rela.text     0x0000000010000280        0x0 /tmp/cchY3199.o
+ .rela.text     0x0000000010000280        0x0 /tmp/ccNdQuJU.o
 
 .rodata         0x0000000010000280        0x0
                 0x0000000010000280                . = ALIGN (0x8)
@@ -48,8 +48,8 @@ Linker script and memory map
                 0x0000000000000000                . = ALIGN (0x8)
                 0x0000000000000000                _fdata = .
  *(.data .data.* .gnu.linkonce.d.*)
- .data          0x0000000000000000        0x0 /tmp/cchY3199.o
- .data          0x0000000000000000        0x0 /tmp/ccq5kcM7.o
+ .data          0x0000000000000000        0x0 /tmp/ccNdQuJU.o
+ .data          0x0000000000000000        0x0 /tmp/ccnDZGrT.o
  .data          0x0000000000000000       0x2c fir.o
                 0x0000000000000000                taps
  .data          0x000000000000002c        0x0 fir_control.o
@@ -60,45 +60,47 @@ Linker script and memory map
  *fill*         0x000000000000002c        0x4 
                 0x0000000000000030                _edata = .
 
-.bss            0x0000000000000030      0x108 load address 0x00000000100002b0
+.bss            0x0000000000000030      0x110 load address 0x00000000100002b0
                 0x0000000000000030                . = ALIGN (0x8)
                 0x0000000000000030                _fbss = .
  *(.dynsbss)
  *(.sbss .sbss.* .gnu.linkonce.sb.*)
- .sbss          0x0000000000000030        0x2 /tmp/ccq5kcM7.o
+ .sbss          0x0000000000000030        0x2 /tmp/ccnDZGrT.o
                 0x0000000000000030                flag
  *fill*         0x0000000000000032        0x2 
- .sbss          0x0000000000000034        0x4 fir.o
-                0x0000000000000034                temp
+ .sbss          0x0000000000000034        0x8 fir.o
+                0x0000000000000034                temp_pre
+                0x0000000000000038                temp
  *(.scommon)
  *(.dynbss)
  *(.bss .bss.* .gnu.linkonce.b.*)
- .bss           0x0000000000000038        0x0 /tmp/cchY3199.o
- .bss           0x0000000000000038        0x0 /tmp/ccq5kcM7.o
- .bss           0x0000000000000038      0x100 fir.o
-                0x0000000000000038                outputsignal
- .bss           0x0000000000000138        0x0 fir_control.o
+ .bss           0x000000000000003c        0x0 /tmp/ccNdQuJU.o
+ .bss           0x000000000000003c        0x0 /tmp/ccnDZGrT.o
+ .bss           0x000000000000003c      0x100 fir.o
+                0x000000000000003c                outputsignal
+ .bss           0x000000000000013c        0x0 fir_control.o
  *(COMMON)
-                0x0000000000000138                . = ALIGN (0x8)
-                0x0000000000000138                _ebss = .
-                0x0000000000000138                _end = .
+                0x0000000000000140                . = ALIGN (0x8)
+ *fill*         0x000000000000013c        0x4 
+                0x0000000000000140                _ebss = .
+                0x0000000000000140                _end = .
 
-.mprjram        0x0000000038000000      0x138 load address 0x00000000100002b0
+.mprjram        0x0000000038000000      0x130 load address 0x00000000100002b0
                 0x0000000038000000                . = ALIGN (0x8)
                 0x0000000038000000                _fsram = .
  *libgcc.a:*(.text .text.*)
- .mprjram       0x0000000038000000       0xa8 fir.o
+ .mprjram       0x0000000038000000       0xa0 fir.o
                 0x0000000038000000                initfir
                 0x0000000038000038                fir_excute
- .mprjram       0x00000000380000a8       0x90 fir_control.o
-                0x00000000380000a8                main
+ .mprjram       0x00000000380000a0       0x90 fir_control.o
+                0x00000000380000a0                main
                 0x0000000000000600                PROVIDE (_fstack = (ORIGIN (dff2) + LENGTH (dff2)))
                 0x0000000010000280                PROVIDE (_fdata_rom = LOADADDR (.data))
                 [!provide]                        PROVIDE (_edata_rom = (LOADADDR (.data) + SIZEOF (.data)))
-                0x0000000038000138                PROVIDE (_esram = (ORIGIN (mprjram) + SIZEOF (.mprjram)))
+                0x0000000038000130                PROVIDE (_esram = (ORIGIN (mprjram) + SIZEOF (.mprjram)))
                 0x00000000100002b0                PROVIDE (_esram_rom = LOADADDR (.mprjram))
-LOAD /tmp/cchY3199.o
-LOAD /tmp/ccq5kcM7.o
+LOAD /tmp/ccNdQuJU.o
+LOAD /tmp/ccnDZGrT.o
 LOAD fir.o
 LOAD fir_control.o
 LOAD /opt/riscv/lib/gcc/riscv32-unknown-elf/12.1.0/libgcc.a
@@ -112,50 +114,50 @@ OUTPUT(counter_la_fir.elf elf32-littleriscv)
 .riscv.attributes
                 0x0000000000000000       0x20
  .riscv.attributes
-                0x0000000000000000       0x1e /tmp/cchY3199.o
+                0x0000000000000000       0x1e /tmp/ccNdQuJU.o
  .riscv.attributes
-                0x000000000000001e       0x20 /tmp/ccq5kcM7.o
+                0x000000000000001e       0x20 /tmp/ccnDZGrT.o
  .riscv.attributes
                 0x000000000000003e       0x1c fir.o
  .riscv.attributes
                 0x000000000000005a       0x1c fir_control.o
 
 .comment        0x0000000000000000       0x1b
- .comment       0x0000000000000000       0x1b /tmp/ccq5kcM7.o
+ .comment       0x0000000000000000       0x1b /tmp/ccnDZGrT.o
                                          0x1c (size before relaxing)
  .comment       0x000000000000001b       0x1c fir.o
  .comment       0x000000000000001b       0x1c fir_control.o
 
 .debug_line     0x0000000000000000      0x2d5
- .debug_line    0x0000000000000000      0x204 /tmp/cchY3199.o
- .debug_line    0x0000000000000204       0xd1 /tmp/ccq5kcM7.o
+ .debug_line    0x0000000000000000      0x204 /tmp/ccNdQuJU.o
+ .debug_line    0x0000000000000204       0xd1 /tmp/ccnDZGrT.o
 
 .debug_line_str
                 0x0000000000000000       0xcc
  .debug_line_str
-                0x0000000000000000       0x61 /tmp/cchY3199.o
+                0x0000000000000000       0x61 /tmp/ccNdQuJU.o
  .debug_line_str
-                0x0000000000000061       0x6b /tmp/ccq5kcM7.o
+                0x0000000000000061       0x6b /tmp/ccnDZGrT.o
                                         0x114 (size before relaxing)
 
 .debug_info     0x0000000000000000      0x110
- .debug_info    0x0000000000000000       0x25 /tmp/cchY3199.o
- .debug_info    0x0000000000000025       0xeb /tmp/ccq5kcM7.o
+ .debug_info    0x0000000000000000       0x25 /tmp/ccNdQuJU.o
+ .debug_info    0x0000000000000025       0xeb /tmp/ccnDZGrT.o
 
 .debug_abbrev   0x0000000000000000       0xbe
- .debug_abbrev  0x0000000000000000       0x14 /tmp/cchY3199.o
- .debug_abbrev  0x0000000000000014       0xaa /tmp/ccq5kcM7.o
+ .debug_abbrev  0x0000000000000000       0x14 /tmp/ccNdQuJU.o
+ .debug_abbrev  0x0000000000000014       0xaa /tmp/ccnDZGrT.o
 
 .debug_aranges  0x0000000000000000       0x40
  .debug_aranges
-                0x0000000000000000       0x20 /tmp/cchY3199.o
+                0x0000000000000000       0x20 /tmp/ccNdQuJU.o
  .debug_aranges
-                0x0000000000000020       0x20 /tmp/ccq5kcM7.o
+                0x0000000000000020       0x20 /tmp/ccnDZGrT.o
 
 .debug_str      0x0000000000000000      0x159
- .debug_str     0x0000000000000000       0x6d /tmp/cchY3199.o
- .debug_str     0x000000000000006d       0xec /tmp/ccq5kcM7.o
+ .debug_str     0x0000000000000000       0x6d /tmp/ccNdQuJU.o
+ .debug_str     0x000000000000006d       0xec /tmp/ccnDZGrT.o
                                         0x125 (size before relaxing)
 
 .debug_frame    0x0000000000000000       0xa4
- .debug_frame   0x0000000000000000       0xa4 /tmp/ccq5kcM7.o
+ .debug_frame   0x0000000000000000       0xa4 /tmp/ccnDZGrT.o

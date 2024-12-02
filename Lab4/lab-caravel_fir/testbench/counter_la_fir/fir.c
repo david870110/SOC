@@ -23,16 +23,13 @@ void __attribute__ ( ( section ( ".mprjram" ) ) ) fir_excute() {
 	uint8_t register t = 0;
 
 	wb_write(reg_fir_x_in, t);
-	while (t < N-1) {	
 
-		t = t + 1;	
-		temp = wb_read(reg_fir_y_out);  // read Y from fir
-		wb_write(reg_fir_x_in, t);
-
-
-		outputsignal[t-1] = temp;
-
-    }
+	for (uint8_t t = 1; t < N; t++) {
+		temp = wb_read(reg_fir_y_out);  
+		wb_write(reg_fir_x_in, t);      
+		//outputsignal[t - 1] = temp;    
+	}
+	
 	temp = wb_read(reg_fir_y_out);
 	outputsignal[t] = temp;	
 	// let TB check the final Y by using MPRJ[31:24]
