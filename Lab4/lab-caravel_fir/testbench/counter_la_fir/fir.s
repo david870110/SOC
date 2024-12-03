@@ -43,13 +43,15 @@ fir_excute:
 	addi	a4,a4,%lo(.LANCHOR1)
 	li	a3,805306368
 	li	a1,64
+
+
 .L6:
 	sw	a5,128(a3)
 	addi	a5,a5,1
+	sw	a2,0(a4)    # store to array !!!
+	addi	a4,a4,4
 	lw	a2,132(a3)
-	#sw	a2,0(a4)
-	#addi	a4,a4,4
-	
+
 	bne	a5,a1,.L6
 	lw	a4,132(a3)
 	lui	a2,%hi(temp)
@@ -72,6 +74,8 @@ fir_excute:
 	.set	.LANCHOR0,. + 0
 	.type	taps, @object
 	.size	taps, 44
+
+
 taps:
 	.word	0
 	.word	-10
