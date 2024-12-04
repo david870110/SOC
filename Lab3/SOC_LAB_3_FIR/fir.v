@@ -184,7 +184,7 @@ module fir
 
     assign tap_addr_sel = (pop_tap) ? tap_wr_addr :  tap_rd_addr;// --!!! if tap data transfer finish, but still transfer tap when ap_idle = 1, it maybe will have problem.  - JIANG
 
-    assign tap_wr_addr  = aw_fifo_out - 'h20;
+    assign tap_wr_addr  = aw_fifo_out - 'h40;
     assign tap_rd_addr  = ((araddr >= 'h20) & (araddr <= 'hFF) & arready) ? (araddr - 'h20) : tap_cal_addr << 2;
 
 
@@ -228,12 +228,12 @@ module fir
     reg [DATA_NUM_BIT-1 : 0] data_ptr;
     reg [DATA_NUM_BIT-1 : 0] data_addr;
     reg pe_start_reg, state;
-    reg result_latch_full;
+
 
     assign cal_start    = !ap_idle | ss_tready;
-    assign ss_tready    = (state)                     ? ss_tvalid & !result_latch_full   : (tap_ptr == 1 & ss_tvalid & !result_latch_full) | (tap_count == 0 & ss_tvalid & pe_start_reg);
+    assign ss_tready    = (state)                     ? ss_tvalid & !sm_full   : (tap_ptr == 1 & ss_tvalid & !sm_full) | (tap_count == 0 & ss_tvalid & pe_start_reg);
     assign tap_cal_addr = (state)                     ? ss_tready   :
-                          (tap_ptr == 1 & (!ss_tvalid | result_latch_full)) ? 0           : tap_ptr;
+                          (tap_ptr == 1 & (!ss_tvalid | sm_full)) ? 0           : tap_ptr;
                           
     always@(posedge axis_clk or negedge axis_rst_n)
     begin
@@ -249,7 +249,7 @@ module fir
             if(state == CAL)
             begin
                 //************************CAL STATE TRANSITION**********************
-                if(tap_ptr == 1 & (!ss_tvalid | result_latch_full))
+                if(tap_ptr == 1 & (!ss_tvalid | sm_full))
                 begin 
                     state <= WAIT;
                     tap_ptr <= 0;
@@ -290,7 +290,7 @@ module fir
             if(state == WAIT)
             begin
                 //************************WAIT STATE TRANSITION**********************
-                if(ss_tready & !result_latch_full)
+                if(ss_tready & !sm_full)
                 begin
                     state <= CAL;
                     if(tap_count == 1)
@@ -418,30 +418,27 @@ module fir
 //*******************************************************************************************
 // - data_en to latch result
     reg[pDATA_WIDTH-1  : 0] result_latch;
-
-
-    assign sm_tvalid = result_latch_full;
-    assign sm_tdata  = (tap_count == 0) ? result : result_latch;
+    wire sm_full,sm_empty;
+    wire[pDATA_WIDTH-1  : 0] sm_fifo_data;
+    assign sm_tvalid = !sm_empty;
     assign sm_tlast  = (data_length == 0);
+    assign sm_tdata  = sm_fifo_data;
 
-    always@(posedge axis_clk or negedge axis_rst_n)
-    begin
-        if(!axis_rst_n)
-        begin
-            result_latch_full <= 0;
-            result_latch<=0;
-        end
-        else
-        begin
-            if(data_wr_en) 
-            begin
-                result_latch_full <= 1;
-                result_latch <= result;
-            end
-            else if(sm_tready)
-                result_latch_full <= 0;
-        end
+    fifo
+    #(  
+        .WIDTH      (pDATA_WIDTH),
+        .DEPTH      (2)
+    )   sm_fifo
+    (
+        .clk         (axis_clk),
+        .rst_n       (axis_rst_n),
+        .pre_full    (sm_full),
+        .pre_empty   (sm_empty),
+        .w_valid     (data_wr_en),
+        .r_ready     (sm_tready & sm_tvalid),
+        .data_in     (result),
+        .data_out    (sm_fifo_data)
+    );
 
-    end 
-// valid -> ready , but ready can't -> valid.
+
 endmodule
