@@ -417,7 +417,6 @@ module fir
 // - axi-stream read
 //*******************************************************************************************
 // - data_en to latch result
-    reg[pDATA_WIDTH-1  : 0] result_latch;
     wire sm_full,sm_empty;
     wire[pDATA_WIDTH-1  : 0] sm_fifo_data;
     assign sm_tvalid = !sm_empty;
@@ -427,7 +426,7 @@ module fir
     fifo
     #(  
         .WIDTH      (pDATA_WIDTH),
-        .DEPTH      (2)
+        .DEPTH      (3)
     )   sm_fifo
     (
         .clk         (axis_clk),
