@@ -70,7 +70,7 @@ module user_proj_example #(
     output [2:0] irq
 );
     wire clk;
-    wire rst, rst_n;
+    wire rst;
 
     wire valid;
 
@@ -100,14 +100,9 @@ module user_proj_example #(
     assign ctrl_addr     = wbs_adr_i[22:0];
 
 
-    // IRQ
-    assign irq           = 3'b000;	// Unused
-
-
     // Assuming LA probes [65:64] are for controlling the count clk & reset  
     assign clk           = (~la_oenb[64]) ? la_data_in[64]: wb_clk_i;
     assign rst           = (~la_oenb[65]) ? la_data_in[65]: wb_rst_i;
-    assign rst_n         = ~rst;
 
     always @(posedge clk) begin
         if (rst) begin
