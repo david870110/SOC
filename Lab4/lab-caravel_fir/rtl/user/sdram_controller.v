@@ -2,20 +2,7 @@ module sdram_controller (
         input   clk,
         input   rst,
 
-        // these signals go directly to the IO pins
-        // output  sdram_clk,
-        output  sdram_cle,
-        output  sdram_cs,
-        output  sdram_cas,
-        output  sdram_ras,
-        output  sdram_we,
-        output  sdram_dqm,
-        output  [1:0]  sdram_ba,
-        output  [12:0] sdram_a,
-        // Jiin: split dq into dqi (input) dqo (output)
-        // inout [7:0] sdram_dq,
-        input   [31:0] sdram_dqi,
-        output  [31:0] sdram_dqo,
+
 
         // User interface
         // Note: we want to remap addr (see below)
@@ -45,6 +32,19 @@ module sdram_controller (
     `define RA      22:10
     `define CA      7:0
 
+    wire rst_n;
+    wire sdram_cle;
+    wire sdram_cs;
+    wire sdram_cas;
+    wire sdram_ras;
+    wire sdram_we;
+    wire sdram_dqm;
+    wire [1:0] sdram_ba;
+    wire [12:0] sdram_a;
+    wire [31:0] sdram_dqi;
+    wire [31:0] sdram_dqo;
+
+    assign rst_n = ~rst;
     // Address Remap
     //   - remap user address to addr to create more offpage/onpage cases
     // 
@@ -390,5 +390,20 @@ module sdram_controller (
         rw_op_q <= rw_op_d;
         delay_ctr_q <= delay_ctr_d;
     end
+
+    sdr user_bram (
+        .Rst_n(rst_n),
+        .Clk(clk),
+        .Cke(sdram_cle),
+        .Cs_n(sdram_cs),
+        .Ras_n(sdram_ras),
+        .Cas_n(sdram_cas),
+        .We_n(sdram_we),
+        .Addr(sdram_a),
+        .Ba(sdram_ba),
+        .Dqm(bram_mask),
+        .Dqi(sdram_dqo),
+        .Dqo(sdram_dqi)
+    );
 
 endmodule
