@@ -71,19 +71,8 @@ module user_proj_example #(
 );
     wire clk;
     wire rst;
-
     wire valid;
 
-    wire sdram_cle;
-    wire sdram_cs;
-    wire sdram_cas;
-    wire sdram_ras;
-    wire sdram_we;
-    wire sdram_dqm;
-    wire [1:0] sdram_ba;
-    wire [12:0] sdram_a;
-    wire [31:0] d2c_data;
-    wire [31:0] c2d_data;
     wire [3:0]  bram_mask;
 
     wire [22:0] ctrl_addr;
@@ -120,6 +109,7 @@ module user_proj_example #(
         .clk(clk),
         .rst(rst),
 
+        .bram_mask(bram_mask),
         .user_addr(ctrl_addr),
         .rw(wbs_we_i),
         .data_in(wbs_dat_i),

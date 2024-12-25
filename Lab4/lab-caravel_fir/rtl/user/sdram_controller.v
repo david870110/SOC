@@ -3,12 +3,11 @@ module sdram_controller (
         input   rst,
 
 
-
+        input   [3:0]  bram_mask,
         // User interface
         // Note: we want to remap addr (see below)
         // input [22:0] addr,       // address to read/write
         input   [22:0] user_addr,   // the address will be remap to addr later
-        
         input   rw,                 // 1 = write, 0 = read
         input   [31:0] data_in,     // data from a read
         output  [31:0] data_out,    // data for a write
