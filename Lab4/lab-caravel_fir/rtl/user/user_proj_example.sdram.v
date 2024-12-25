@@ -92,7 +92,6 @@ module user_proj_example #(
 
     reg ctrl_in_valid_q;
     
-    // WB MI A
     assign valid         = wbs_stb_i & wbs_cyc_i & (wbs_adr_i[31:16] == 16'h3800);
     assign ctrl_in_valid = wbs_we_i ? valid : ~ctrl_in_valid_q && valid;
     assign wbs_ack_o     = (wbs_we_i) ? ~ctrl_busy && valid : ctrl_out_valid; 
