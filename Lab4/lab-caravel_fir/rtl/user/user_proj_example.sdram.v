@@ -99,16 +99,7 @@ module user_proj_example #(
     assign bram_mask     = wbs_sel_i & {4{wbs_we_i}};
     assign ctrl_addr     = wbs_adr_i[22:0];
 
-    // IO
-    assign io_out        = d2c_data;
-    assign io_oeb        = {(`MPRJ_IO_PADS-1){rst}};
 
-    // IRQ
-    assign irq           = 3'b000;	// Unused
-
-    // LA
-    assign la_data_out   = {{(127-BITS){1'b0}}, d2c_data};
-    // Assuming LA probes [65:64] are for controlling the count clk & reset  
     assign clk           = (~la_oenb[64]) ? la_data_in[64]: wb_clk_i;
     assign rst           = (~la_oenb[65]) ? la_data_in[65]: wb_rst_i;
     assign rst_n         = ~rst;

@@ -27,7 +27,7 @@ void __attribute__ ( ( section ( ".mprjram" ) ) ) fir_excute() {
 	for (uint8_t t = 1; t < N; t++) {
 		temp = wb_read(reg_fir_y_out);  
 		wb_write(reg_fir_x_in, t);      
-		//outputsignal[t - 1] = temp;    
+		outputsignal[t - 1] = temp;    
 	}
 	
 	temp = wb_read(reg_fir_y_out);
