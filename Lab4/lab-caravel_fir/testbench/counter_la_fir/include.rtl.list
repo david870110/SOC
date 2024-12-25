@@ -4,11 +4,11 @@
 
 ## User project
 -v ../../rtl/user/user_project_wrapper.v
--v ../../rtl/user/user_proj_exmem_fir.v
+-v ../../rtl/user/user_proj_example.sdram.v
 -v ../../rtl/user/fir.v
 -v ../../rtl/user/bram11.v
--v ../../rtl/user/bram.v
-
+-v ../../rtl/user/sdr.v
+-v ../../rtl/user/sdram_controller.v
 ## VIP
 -v ../../vip/tbuart.v
 -v ../../vip/spiflash.v

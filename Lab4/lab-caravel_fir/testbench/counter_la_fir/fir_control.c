@@ -29,8 +29,6 @@ void __attribute__ ( ( section ( ".mprjram" ) ) ) main()
         reg_mprj_xfer = 1;
         while (reg_mprj_xfer == 1);
 
-	initfir();
-
 	for (int i = 0; i < 3; i++) {
 		initfir();
 		fir_excute();		
